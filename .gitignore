@@ -1,0 +1,58 @@
+# Python e ambientes virtuais
+__pycache__/
+*.py[cod]
+.venv*/
+venv/
+env/
+.tools/
+.uv-cache/
+.python/
+
+# Testes, análise estática e cobertura
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.test-tmp/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Segredos e configuração local; preservar os exemplos
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Arquivos privados e resultados gerados
+storage/
+/api/evaluation/results/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.log
+*.tmp
+
+# Distribuição e empacotamento
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Editores e sistema operacional
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Artefatos locais de direção visual e inspeção da Taste Skill
+.taste-skill/
+.agents
