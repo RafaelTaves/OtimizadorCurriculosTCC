@@ -248,7 +248,8 @@ def test_compiler_isolation_and_diagnostic_redaction(settings):
     assert not options.get("shell")
     assert "linha 12" in caught.value.message
     assert "secret" not in caught.value.message and "CONTENT" not in caught.value.message
-    assert calls[-1][0][1:3] == ["rm", "--force"]
+    assert "--rm" in command
+    assert len(calls) == 1
 
 
 def test_compiler_timeout_removes_container(settings):

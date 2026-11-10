@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import timedelta
 from time import monotonic
+from typing import Literal
 from uuid import uuid4
 
 from sqlalchemy import or_, select
@@ -31,21 +32,32 @@ class Worker:
         compiler: Compiler,
         *,
         analyzer: InterviewAnalyzer | None = None,
+        lane: Literal["all", "ai", "pdf"] = "all",
+        cleanup_interval_seconds: float = 0,
     ) -> None:
         self.settings = settings
         self.database = database
         self.storage = storage
         self.optimizer = optimizer
         self.compiler = compiler
+        self.lane = lane
+        self.cleanup_interval_seconds = cleanup_interval_seconds
+        self.next_cleanup = 0.0
         self.validator = ProposalValidator()
         self.interviews = InterviewProcessor(
             settings, database, InterviewService(settings, storage), analyzer
         )
 
     def claim(self) -> Attempt | None:
-        analysis = self.interviews.claim()
-        if analysis is not None:
-            return analysis
+        if self.lane != "pdf":
+            analysis = self.interviews.claim()
+            if analysis is not None:
+                return analysis
+        operations = {
+            "all": (Operation.OPTIMIZATION, Operation.PREVIEW, Operation.EXPORT),
+            "ai": (Operation.OPTIMIZATION,),
+            "pdf": (Operation.PREVIEW, Operation.EXPORT),
+        }[self.lane]
         now = utcnow()
         with self.database.sessions.begin() as session:
             stale = list(
@@ -53,7 +65,7 @@ class Worker:
                     select(Attempt)
                     .where(
                         Attempt.status == Status.PROCESSING,
-                        Attempt.tipo_operacao != Operation.ANALYSIS,
+                        Attempt.tipo_operacao.in_(operations),
                         Attempt.lease_until < now,
                     )
                     .with_for_update(skip_locked=True)
@@ -77,7 +89,7 @@ class Worker:
                 select(Attempt)
                 .where(
                     Attempt.status == Status.PENDING,
-                    Attempt.tipo_operacao != Operation.ANALYSIS,
+                    Attempt.tipo_operacao.in_(operations),
                     Attempt.available_at <= now,
                 )
                 .order_by(Attempt.created_at)
@@ -117,7 +129,9 @@ class Worker:
         return attempt, resume
 
     def run_once(self) -> bool:
-        self.cleanup()
+        if self.lane != "pdf" and monotonic() >= self.next_cleanup:
+            self.cleanup()
+            self.next_cleanup = monotonic() + self.cleanup_interval_seconds
         claim = self.claim()
         if claim is None:
             return False
@@ -160,7 +174,14 @@ class Worker:
                         model_result.proposal, payload["texto"], payload["vaga"]
                     )
             else:
+                compile_started = monotonic()
                 pdf = self.compiler.compile(payload["latex"])
+                logger.info(
+                    "operation=%s queue_ms=%d compile_ms=%d",
+                    claim.tipo_operacao,
+                    int((claim.started_at - claim.created_at).total_seconds() * 1000),
+                    int((monotonic() - compile_started) * 1000),
+                )
             self._complete(claim, model_result, pdf)
         except ProcessingError as exc:
             self._fail(claim, exc, model_result)

@@ -7,7 +7,10 @@ const path = `/v1/curriculos/${resumeId}`;
 const draft =
   "\\documentclass{article}\n\\begin{document}\nCurrículo sintético revisado\n\\end{document}";
 
-async function editor(page: Page, failure?: "save" | "render" | "download") {
+async function editor(
+  page: Page,
+  scenario?: "save" | "render" | "download" | "cached",
+) {
   const calls: string[] = [];
   let savedCode = "Currículo sintético inicial";
   let revision = 1;
@@ -71,7 +74,7 @@ async function editor(page: Page, failure?: "save" | "render" | "download") {
     if (endpoint === `${path}/latex`) {
       calls.push("save");
       expect(request.headers()["if-match"]).toBe(`"${revision}"`);
-      if (failure === "save")
+      if (scenario === "save")
         return route.fulfill({
           status: 412,
           json: {
@@ -95,15 +98,19 @@ async function editor(page: Page, failure?: "save" | "render" | "download") {
     if (endpoint === `${path}/renderizacoes`) {
       calls.push("render");
       expect(savedCode).toBe(draft);
-      return route.fulfill({ status: 202, json: attempt("pendente") });
+      return route.fulfill({
+        status: 202,
+        json: attempt(scenario === "cached" ? "concluida" : "pendente"),
+      });
     }
     if (endpoint === `/v1/renderizacoes/${attemptId}`) {
+      if (scenario === "cached") calls.push("poll");
       polls++;
       return route.fulfill({
         json: attempt(
           polls === 1
             ? "processando"
-            : failure === "render"
+            : scenario === "render"
               ? "falhou"
               : "concluida",
         ),
@@ -112,7 +119,7 @@ async function editor(page: Page, failure?: "save" | "render" | "download") {
     if (endpoint === `${path}/download`) {
       calls.push("download");
       expect(url.searchParams.get("formato")).toBe("pdf");
-      if (failure === "download")
+      if (scenario === "download")
         return route.fulfill({ status: 500, json: {} });
       return route.fulfill({
         contentType: "application/pdf",
@@ -175,6 +182,28 @@ test("PDF final salva, aguarda compilação e baixa uma única vez", async ({
     page.getByRole("button", { name: "Gerar PDF Final" }),
   ).toBeEnabled();
   expect(calls.filter((call) => call === "download")).toHaveLength(1);
+});
+
+test("baixa um PDF já pronto sem consultar a fila em cada clique", async ({
+  page,
+}) => {
+  const calls = await editor(page, "cached");
+  for (let count = 0; count < 2; count++) {
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Gerar PDF Final" }).click();
+    expect((await download).suggestedFilename()).toBe("curriculo.pdf");
+    await expect(
+      page.getByText("PDF final gerado. Download iniciado."),
+    ).toBeVisible();
+  }
+  expect(calls).toEqual([
+    "save",
+    "render",
+    "download",
+    "save",
+    "render",
+    "download",
+  ]);
 });
 
 for (const action of ["Atualizar prévia", "Gerar PDF Final"]) {

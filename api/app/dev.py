@@ -38,7 +38,8 @@ def run(host: str = "127.0.0.1", port: int = 8000) -> int:
             "--port",
             str(port),
         ],
-        "worker": [sys.executable, "-m", "app.worker"],
+        "worker IA": [sys.executable, "-m", "app.worker", "--lane", "ai"],
+        "worker PDF": [sys.executable, "-m", "app.worker", "--lane", "pdf"],
     }
     try:
         for name, command in commands.items():
@@ -46,7 +47,7 @@ def run(host: str = "127.0.0.1", port: int = 8000) -> int:
             # both services must use the same .env, database and private storage.
             processes.append(subprocess.Popen(command, cwd=API_ROOT))
             logger.info("%s iniciado", name)
-        logger.info("API e worker ativos. Ctrl+C encerra ambos. Reinicie após editar o backend.")
+        logger.info("API e workers ativos. Ctrl+C encerra os três. Reinicie após editar o backend.")
         while True:
             for name, process in zip(commands, processes, strict=True):
                 code = process.poll()

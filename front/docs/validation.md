@@ -213,3 +213,39 @@ Build e navegador precisaram executar fora do sandbox após bloqueios locais de
 criação de artefatos/inicialização do navegador. A primeira versão do teste de
 falha de download capturava o alerta vazio do Next.js; o seletor foi corrigido
 para aguardar a mensagem de erro do editor, e os sete testes foram repetidos.
+
+## Latência do PDF final — 10/11/2026
+
+- Build de produção, TypeScript no build, ESLint e Taste lint em modo app
+  aprovados. Os oito testes Playwright passaram, incluindo dois downloads
+  consecutivos do mesmo PDF já pronto sem consulta de status. O teste de
+  reflow passou em 1440, 768 e 390 px. A composição visual do editor é a mesma.
+- A suíte da API passou com 125 testes, incluindo os três testes reais de
+  Tectonic. Sete testes específicos de PostgreSQL foram excluídos dessa
+  execução. A configuração do Compose passou em `docker compose config --quiet`.
+- Em uma rodada local com currículo sintético, TestClient, SQLite e Tectonic
+  em Docker, o tempo entre salvar e receber o PDF foi de 1.653 ms com
+  compilação, 16 ms para reaproveitar o PDF final e 22 ms para reaproveitar
+  uma prévia já pronta. A medição aciona o worker diretamente quando
+  necessário e não inclui rede, espera pelo worker ocioso ou polling do
+  navegador. A compilação anterior da prévia não entra nos 22 ms.
+
+## Histórico de currículos — 10/11/2026
+
+A lista responde à pergunta “Qual documento quero abrir e de onde posso
+continuar?”. A direção existente `achromatic-ledger` (seed 1146489771) usa
+divisórias leves, etiquetas neutras e destaque no nome. A contagem vem do total
+paginado da API. Em telas estreitas, a data e as ações passam para uma linha
+própria com alvos de toque de 44 px. Entrevistas e tentativas dos originais são
+consultadas ao expandir “Detalhes”.
+
+- Playwright com Edge e dados sintéticos em 320, 390, 768 e 1440 px. Os
+  cenários do histórico verificam reflow, expansão por teclado, links de
+  continuidade, tooltip, confirmação e atualização da lista após exclusão.
+  O Axe não apontou violações no painel expandido em 390 px.
+- Taste lint em modo app com 0 falhas e 0 avisos. Taste inspect autenticado
+  em 390, 768 e 1440 px com 0 falhas e 1 aviso de espaço livre abaixo dos três
+  documentos da fixture no desktop. As três capturas foram conferidas e estão
+  em `.taste-skill/saved-resumes/`.
+- A exclusão foi simulada na API de teste. As verificações de tela foram
+  executadas em viewports do Edge no Windows.

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import PurePosixPath
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -28,6 +28,16 @@ from app.service.errors import AppError
 from app.service.ports import Extractor, Storage
 
 logger = logging.getLogger(__name__)
+
+
+def compilation_fingerprint(
+    resume_id: UUID, operation: Operation, encoded: bytes, compiler_image: str
+) -> str:
+    prefix = str(resume_id).encode() + operation.encode()
+    # Version image tags when changing the compiler or its packages.
+    if operation == Operation.PREVIEW:
+        prefix += compiler_image.encode() + b"\0"
+    return hashlib.sha256(prefix + encoded).hexdigest()
 
 
 def month_window(now: datetime) -> tuple[datetime, datetime]:
@@ -145,6 +155,9 @@ class ResumeService:
                 "edicao_concorrente", "O currículo mudou. Recarregue antes de salvar.", 412
             )
         require_human_review(session, user_id, resume)
+        if latex == resume.latex_gerado:
+            session.commit()
+            return resume
         new_tex = self.storage.put(latex.encode("utf-8"))
         old_tex = resume.arquivo_objeto_key
         resume.arquivo_objeto_key = new_tex
@@ -323,9 +336,9 @@ class QueueService:
             if not payload["latex"]:
                 raise AppError("latex_inexistente", "Não há código LaTeX para compilar.", 422)
         encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()
-        fingerprint = hashlib.sha256(
-            str(resume_id).encode() + operation.encode() + encoded
-        ).hexdigest()
+        fingerprint = compilation_fingerprint(
+            resume_id, operation, encoded, self.settings.compiler_image
+        )
         if idempotency_key:
             if session.scalar(
                 select(IdempotencyRecord.id).where(
@@ -347,6 +360,10 @@ class QueueService:
                 session.commit()
                 return existing
         now = utcnow()
+        if operation == Operation.EXPORT and idempotency_key is None:
+            reused = self._reuse_pdf(session, resume, encoded, fingerprint, now)
+            if reused is not None:
+                return reused
         if operation == Operation.OPTIMIZATION:
             if interview_id:
                 from app.service.interviews import InterviewService
@@ -398,6 +415,7 @@ class QueueService:
                         Attempt.usuario_id == user_id,
                         Attempt.tipo_operacao.in_((Operation.PREVIEW, Operation.EXPORT)),
                         Attempt.created_at >= now - timedelta(minutes=1),
+                        or_(Attempt.status != Status.COMPLETED, Attempt.executions > 0),
                     )
                 )
                 or 0
@@ -433,6 +451,85 @@ class QueueService:
             session.rollback()
             self.storage.delete(key)
             raise
+        return attempt
+
+    def _reuse_pdf(
+        self, session: Session, resume: Resume, encoded: bytes, fingerprint: str, now: datetime
+    ) -> Attempt | None:
+        exports = select(Attempt).where(
+            Attempt.usuario_id == resume.usuario_id,
+            Attempt.curriculo_id == resume.id,
+            Attempt.tipo_operacao == Operation.EXPORT,
+            Attempt.revisao_solicitada == resume.latex_revisao,
+        )
+        if resume.pdf_objeto_key and resume.pdf_revisao == resume.latex_revisao:
+            completed = session.scalar(
+                exports.where(Attempt.status == Status.COMPLETED)
+                .order_by(Attempt.created_at.desc())
+                .limit(1)
+            )
+            if completed is not None:
+                session.commit()
+                logger.info("operation=exportacao result=reused_final")
+                return completed
+
+        active = session.scalar(exports.where(Attempt.status.in_(ACTIVE_STATUSES)).limit(1))
+        if active is not None:
+            session.commit()
+            return active
+
+        preview_hash = compilation_fingerprint(
+            resume.id, Operation.PREVIEW, encoded, self.settings.compiler_image
+        )
+        preview = session.scalar(
+            select(Attempt)
+            .where(
+                Attempt.usuario_id == resume.usuario_id,
+                Attempt.curriculo_id == resume.id,
+                Attempt.tipo_operacao == Operation.PREVIEW,
+                Attempt.status == Status.COMPLETED,
+                Attempt.request_hash == preview_hash,
+                Attempt.expires_at > now,
+                Attempt.resultado_temporario_key.is_not(None),
+            )
+            .order_by(Attempt.completed_at.desc())
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+        if preview is None or preview.resultado_temporario_key is None:
+            return None
+        try:
+            pdf = self.storage.read(preview.resultado_temporario_key)
+        except AppError as exc:
+            if exc.code == "objeto_inexistente":
+                return None
+            raise
+        if len(pdf) > self.settings.max_pdf_bytes or not pdf.startswith(b"%PDF-"):
+            return None
+        key = self.storage.put(pdf)
+        obsolete = resume.pdf_objeto_key
+        resume.pdf_objeto_key = key
+        resume.pdf_revisao = resume.latex_revisao
+        attempt = Attempt(
+            usuario_id=resume.usuario_id,
+            curriculo_id=resume.id,
+            tipo_operacao=Operation.EXPORT,
+            request_hash=fingerprint,
+            revisao_solicitada=resume.latex_revisao,
+            status=Status.COMPLETED,
+            etapa="finalizada",
+            completed_at=now,
+        )
+        session.add(attempt)
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
+            self.storage.delete(key)
+            raise
+        if obsolete:
+            self.storage.delete(obsolete)
+        logger.info("operation=exportacao result=reused_preview")
         return attempt
 
     def confirm_review(self, session: Session, user_id: UUID, attempt_id: UUID) -> Attempt:

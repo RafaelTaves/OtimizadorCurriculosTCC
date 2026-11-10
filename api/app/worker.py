@@ -1,3 +1,4 @@
+import argparse
 import logging
 import signal
 from threading import Event
@@ -13,6 +14,9 @@ from app.service.worker import Worker
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Consome a fila de processamento.")
+    parser.add_argument("--lane", choices=("all", "ai", "pdf"), default="all")
+    args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     settings = get_settings()
     database = Database(settings.database_url)
@@ -23,6 +27,8 @@ def main() -> None:
         OpenAIOptimizer(settings),
         DockerCompiler(settings),
         analyzer=OpenAIInterviewAnalyzer(settings),
+        lane=args.lane,
+        cleanup_interval_seconds=30,
     )
     stop = Event()
 

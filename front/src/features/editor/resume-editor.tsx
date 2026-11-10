@@ -127,14 +127,12 @@ export function ResumeEditor({
         )
       ).data,
     enabled: Boolean(exportId),
+    refetchOnMount: (query) => query.state.data?.status !== "concluida",
     refetchInterval: (state) =>
       ["pendente", "processando"].includes(state.state.data?.status ?? "")
-        ? Math.min(
-            10_000,
-            2_000 * 2 ** Math.floor(state.state.dataUpdateCount / 3),
-          )
+        ? 1_000
         : false,
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     retry: false,
   });
@@ -311,6 +309,8 @@ export function ResumeEditor({
 
   async function renderFinal() {
     if (!resume || actionsDisabled) return;
+    pendingDownload.current = null;
+    setExportId(null);
     setBusy("render");
     setError(null);
     setMessage(null);
@@ -323,6 +323,10 @@ export function ResumeEditor({
         attemptSchema.parse,
       );
       pendingDownload.current = result.data.id;
+      client.setQueryData(
+        [userId, "renderizacao", result.data.id],
+        result.data,
+      );
       setExportId(result.data.id);
     } catch (cause) {
       await handleActionError(

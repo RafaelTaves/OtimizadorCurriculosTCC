@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     compiler_image: str = "curriculo-tectonic:0.1"
     compiler_timeout_seconds: int = Field(default=40, ge=1)
     max_pdf_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
-    worker_poll_seconds: float = Field(default=2.0, gt=0)
+    worker_poll_seconds: float = Field(default=0.5, gt=0)
     worker_lease_seconds: int = Field(default=300, ge=10)
     worker_max_executions: int = Field(default=3, ge=1)
     retry_base_seconds: int = Field(default=5, ge=1)

@@ -1,14 +1,19 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowUpRight,
-  FileText,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { resumePageSchema, type History } from "@/lib/contracts";
+import {
+  resumePageSchema,
+  type History,
+  type ResumeSummary,
+} from "@/lib/contracts";
 import { browserGet, type LoadResult } from "@/lib/http/errors";
 import { resumeDestination } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,6 +22,76 @@ import {
   DeleteResumeButton,
   ResumeRecovery,
 } from "@/features/curriculos/resume-recovery";
+
+const dateFormat = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  timeZone: "America/Sao_Paulo",
+});
+
+function ResumeRow({
+  resume,
+  userId,
+}: {
+  resume: ResumeSummary;
+  userId: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
+  const destination = resumeDestination(resume);
+  const original = resume.tipo === "original";
+  const reviewStatus = original
+    ? resume.texto_confirmado
+      ? "Texto confirmado"
+      : "Texto a revisar"
+    : resume.revisao_humana_confirmada
+      ? "Revisão confirmada"
+      : "Revisão pendente";
+
+  return (
+    <li className="resume-row">
+      <div className="resume-identity">
+        <Link
+          className="resume-name"
+          href={destination}
+          title={resume.nome_arquivo}
+        >
+          {resume.nome_arquivo}
+        </Link>
+        <div className="resume-meta">
+          <span className="status-label">
+            {original ? "Original" : "Versão otimizada"}
+          </span>
+          <span>{reviewStatus}</span>
+        </div>
+      </div>
+      <time dateTime={resume.created_at}>
+        {dateFormat.format(new Date(resume.created_at))}
+      </time>
+      <Link
+        className="row-action"
+        href={destination}
+        aria-label={`Abrir ${resume.nome_arquivo}`}
+      >
+        <ArrowUpRight size={16} aria-hidden="true" />
+      </Link>
+      <button
+        type="button"
+        className="row-action resume-details-toggle"
+        aria-label={`Detalhes de ${resume.nome_arquivo}`}
+        aria-expanded={expanded}
+        aria-controls={detailsId}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        Detalhes <ChevronDown size={14} aria-hidden="true" />
+      </button>
+      <DeleteResumeButton resume={resume} userId={userId} />
+      <div id={detailsId} className="resume-recovery" hidden={!expanded}>
+        {expanded && <ResumeRecovery resume={resume} userId={userId} />}
+      </div>
+    </li>
+  );
+}
 
 export function HistoryPanel({
   initial,
@@ -47,9 +122,17 @@ export function HistoryPanel({
       aria-labelledby="curriculos-titulo"
     >
       <div className="panel-heading">
-        <h2 id="curriculos-titulo">
-          {full ? "Documentos salvos" : "Currículos recentes"}
-        </h2>
+        <div className="history-heading">
+          <h2 id="curriculos-titulo">
+            {full ? "Documentos salvos" : "Currículos recentes"}
+          </h2>
+          {history && !query.error && (
+            <span className="history-count">
+              <span className="sr-only">Total de documentos salvos: </span>
+              {history.total.toLocaleString("pt-BR")}
+            </span>
+          )}
+        </div>
         {!full && (
           <Link href="/curriculos" className="text-link brand-action">
             Ver todos <ArrowUpRight size={15} aria-hidden="true" />
@@ -121,71 +204,11 @@ export function HistoryPanel({
           </div>
         </div>
       ) : (
-        <>
-          <p className="list-summary">
-            {history.total}{" "}
-            {history.total === 1 ? "documento salvo" : "documentos salvos"}
-            {!full && history.total > size ? ` · ${size} mais recentes` : ""}
-          </p>
-          <ul className="resume-list">
-            {history.itens.map((resume) => (
-              <li key={resume.id}>
-                <div className="resume-identity">
-                  <FileText size={18} strokeWidth={1.5} aria-hidden="true" />
-                  <div>
-                    <Link
-                      className="resume-name"
-                      href={resumeDestination(resume)}
-                    >
-                      {resume.nome_arquivo}
-                    </Link>
-                    <div className="resume-meta">
-                      <span className="status-label">
-                        {resume.tipo === "original"
-                          ? "Original"
-                          : "Versão otimizada"}
-                      </span>
-                      {resume.tipo === "original" && (
-                        <span>
-                          {resume.texto_confirmado
-                            ? "Texto confirmado"
-                            : "Texto a revisar"}
-                        </span>
-                      )}
-                      {resume.tipo === "otimizado" && (
-                        <span>
-                          {resume.revisao_humana_confirmada
-                            ? "Revisão confirmada"
-                            : "Revisão pendente"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="resume-trailing">
-                  <time dateTime={resume.created_at}>
-                    {new Intl.DateTimeFormat("pt-BR", {
-                      day: "2-digit",
-                      month: "short",
-                      timeZone: "America/Sao_Paulo",
-                    }).format(new Date(resume.created_at))}
-                  </time>
-                  <Link
-                    className="row-action"
-                    href={resumeDestination(resume)}
-                    aria-label={`Abrir ${resume.nome_arquivo}`}
-                  >
-                    <ArrowUpRight size={18} aria-hidden="true" />
-                  </Link>
-                </div>
-                <div className="resume-secondary-actions">
-                  <ResumeRecovery resume={resume} userId={userId} />
-                  <DeleteResumeButton resume={resume} userId={userId} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul className="resume-list">
+          {history.itens.map((resume) => (
+            <ResumeRow key={resume.id} resume={resume} userId={userId} />
+          ))}
+        </ul>
       )}
       {full && history && history.total > size && (
         <nav aria-label="Paginação dos currículos" className="pagination">

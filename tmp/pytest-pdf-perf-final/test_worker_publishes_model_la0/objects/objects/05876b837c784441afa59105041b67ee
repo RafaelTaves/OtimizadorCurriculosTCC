@@ -1,0 +1,135 @@
+% ============================================================================
+% TEMPLATE DE CURRÍCULO — INSTRUÇÕES PARA A IA E PARA REVISÃO HUMANA
+% ============================================================================
+% FINALIDADE: adaptar informações reais à vaga, em português do Brasil.
+% Comentários orientam o preenchimento; não aparecem no PDF nem executam regras.
+% Os campos entre colchetes são estrutura de rascunho, nunca fatos sobre a pessoa.
+%
+% IA_FATOS — Use somente o currículo base confirmado e informações adicionais
+% explicitamente fornecidas pela pessoa. A vaga indica prioridades, não fatos
+% sobre o candidato.
+%
+% IA_AUSENCIAS — Algo não mencionado é "não informado", não "inexistente".
+% Peça esclarecimento quando isso mudar um fato. Não deduza vínculo atual, datas,
+% local ou domínio técnico. Remova campos opcionais sem suporte. Se for necessário
+% deixar estrutura para preenchimento, identifique-a como PENDENTE e solicite os
+% dados à pessoa. Não apresente um exemplo como experiência ou projeto realizado.
+%
+% IA_RASCUNHO — Ao devolver pendências, liste os dados que faltam e peça seu
+% preenchimento. Um documento com PENDENTE ou colchetes não preenchidos é um
+% rascunho, não uma versão final para candidatura. Antes do uso, a pessoa deve
+% completar os campos com informações reais ou remover a entrada/seção.
+% Não mantenha Lorem ipsum, exemplos de contatos ou links fictícios na versão final.
+%
+% IA_VAGA — Priorize evidências relevantes. Melhore clareza e organização sem
+% modificar o sentido. Descreva ação, contexto e resultado somente se confirmados.
+% Sem resultado informado, descreva a contribuição sem criar impacto ou números.
+% Requisitos da vaga sem evidência ficam em uma lista de lacunas separada; não
+% devem aparecer como habilidades da pessoa. Não prometa aprovação ou nota ATS.
+%
+% IA_ORDEM — Ordem padrão: cabeçalho, Experiência, Habilidades, Educação.
+% Para primeira oportunidade ou estágio, mova Educação para após o cabeçalho.
+% Destaque Projetos quando forem a melhor evidência prática disponível.
+% Sem experiência profissional informada, omita Experiência e use Educação,
+% Projetos e Habilidades. Não transforme atividade acadêmica em emprego.
+% Não há número fixo de vínculos para "pouca experiência": considere contexto,
+% duração e relevância confirmados; na dúvida, pergunte à pessoa.
+%
+% IA_LATEX — Preserve classe, pacotes, margens, tipografia e a macro \cventry.
+% Altere campos, quantidade e ordem dos blocos conforme estas regras.
+% Para ativar Projetos, remova o primeiro sinal de comentário de TODAS as linhas
+% do bloco, inclusive os ambientes e suas terminações. Não deixe ambientes abertos.
+% Escape caracteres especiais dos dados: &, porcentagem, $, #, _, {, }, ~, ^
+% e barra invertida. Não escape os próprios comandos do template.
+% Não acrescente comandos para executar programas ou ler arquivos externos.
+%
+% IA_REVISAO — Confira fatos, evidências, datas e números. A revisão humana é
+% obrigatória antes do uso, inclusive quando não houver campos pendentes.
+% ============================================================================
+
+% --- TIPO E FORMATO DO DOCUMENTO ---
+\documentclass[a4paper,10pt]{article}
+
+% --- PACOTES: BASE / IDIOMA ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+
+% --- PACOTES: LAYOUT / TIPOGRAFIA ---
+\usepackage{geometry}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{tabularx}
+
+% --- PACOTES: LINKS / BOOKMARKS ---
+\usepackage{hyperref}
+\usepackage{bookmark}
+\usepackage{xurl}
+
+% --- CONFIGURAÇÃO: MARGENS / ESPAÇAMENTO ---
+\geometry{top=1.5cm, bottom=1.5cm, left=1.5cm, right=1.5cm}
+\setcounter{secnumdepth}{0}
+\setlist[itemize]{
+    leftmargin=0.75em,
+    itemsep=0.2em,
+    topsep=0.25em,
+    parsep=0em,
+    partopsep=0em
+}
+\pagestyle{empty}
+
+% --- CONFIGURAÇÃO: METADADOS / LINKS ---
+\hypersetup{
+    pdftitle={Currículo},
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=black,
+    citecolor=black,
+    bookmarksdepth=2
+}
+
+% --- CONFIGURAÇÃO: TÍTULOS ---
+\titleformat{\section}
+{\Large\bfseries}
+{}
+{0em}
+{}
+[\titlerule\vspace{0.5ex}]
+\titleformat{\subsection}
+{\normalsize\bfseries}
+{}
+{0em}
+{}
+\titlespacing*{\subsection}{0pt}{0.35em}{0.15em}
+
+% --- MACRO: ENTRADA COM BOOKMARK ---
+% Argumentos: {organização ou projeto}{local ou natureza}{cargo, curso ou papel}{período}.
+% IA: campos opcionais não informados recebem {}. Não crie dados para ocupar
+% células. Na versão final, não mantenha colchetes nem a palavra PENDENTE.
+\newcounter{cventry}
+\newcommand{\cventry}[4]{%
+    \refstepcounter{cventry}%
+    \phantomsection%
+    \pdfbookmark[2]{#1}{cventry-\thecventry}%
+    \noindent\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+    \textbf{#1} & #2 \\
+    \textit{#3} & \textit{#4} \\
+    \end{tabularx}
+}
+
+% --- INÍCIO DO DOCUMENTO ---
+\begin{document}
+Ana Silva\par
+\section*{Resumo}
+Projeto acadêmico em Python
+
+
+\section*{Competências}
+\begin{itemize}
+\item Python
+\end{itemize}
+
+\end{document}

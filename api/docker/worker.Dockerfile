@@ -6,6 +6,6 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY app ./app
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev && mkdir /app/storage && chown 10001:10001 /app/storage
 ENV PATH="/app/.venv/bin:$PATH"
 CMD ["python", "-m", "app.worker"]

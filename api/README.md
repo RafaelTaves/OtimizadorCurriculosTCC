@@ -45,9 +45,9 @@ uv run alembic upgrade head
 uv run python -m app.dev
 ```
 
-`app.dev` inicia a API e o worker juntos, usando o mesmo Python, `.env` e
-diretório de armazenamento. Ctrl+C encerra os dois; se um processo terminar,
-o outro também será encerrado. Reinicie o comando após editar o backend (sem
+`app.dev` inicia a API e dois workers, um para IA e outro para PDF, usando o
+mesmo Python, `.env` e diretório de armazenamento. Ctrl+C encerra os três. Se um
+processo terminar, os outros também serão encerrados. Reinicie após editar o backend (sem
 reload automático). O front continua em outro terminal com `npm run dev`.
 Encerre a API anterior antes de usar esse comando para liberar a porta 8000.
 
@@ -62,6 +62,17 @@ em um e, no outro:
 ```powershell
 uv run python -m app.worker
 ```
+
+O comando sem opções consome as duas filas. Para isolar a compilação, execute
+`python -m app.worker --lane ai` e `python -m app.worker --lane pdf` em processos
+separados. A fila de PDF consulta novos trabalhos a cada 0,5 s quando ociosa
+(`WORKER_POLL_SECONDS`). O modo `ai` ou `all` também faz a limpeza periódica.
+No Compose, `DOCKER_SOCKET_GID` deve corresponder ao grupo do socket do Docker
+se ele usar um grupo diferente do padrão (GID 0).
+
+Ao trocar a imagem ou os pacotes do compilador, publique uma tag nova e use o
+mesmo `COMPILER_IMAGE` na API e no worker PDF. O reaproveitamento de prévias
+leva essa tag em conta.
 
 ### Proposta parada em “fila” ou entrevista sem perguntas
 

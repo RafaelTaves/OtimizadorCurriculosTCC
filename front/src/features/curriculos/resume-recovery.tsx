@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { LoaderCircle, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { DataError } from "@/components/ui/data-error";
 import {
   attemptPageSchema,
@@ -29,7 +29,6 @@ export function ResumeRecovery({
   resume: ResumeSummary;
   userId: string;
 }) {
-  const [open, setOpen] = useState(false);
   const sessionQuery = useQuery({
     queryKey: [userId, "complementacoes", resume.id, 1, 20],
     queryFn: async () =>
@@ -42,7 +41,7 @@ export function ResumeRecovery({
           interviewPageSchema.parse,
         )
       ).data,
-    enabled: open && resume.tipo === "original",
+    enabled: resume.tipo === "original",
   });
   const attemptsQuery = useQuery({
     queryKey: [userId, "otimizacoes", resume.id, 1, 20],
@@ -54,18 +53,13 @@ export function ResumeRecovery({
           attemptPageSchema.parse,
         )
       ).data,
-    enabled: open && resume.tipo === "original",
+    enabled: resume.tipo === "original",
   });
   const sessions = sessionQuery.data?.itens ?? [];
   const attempts = attemptsQuery.data?.itens ?? [];
 
   return (
-    <details
-      className="resume-recovery"
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary>Retomar trabalho e ver tentativas</summary>
+    <>
       {resume.tipo === "otimizado" ? (
         <p className="recovery-action">
           {resume.revisao_humana_confirmada
@@ -168,7 +162,7 @@ export function ResumeRecovery({
           )}
         </>
       )}
-    </details>
+    </>
   );
 }
 
@@ -179,7 +173,18 @@ export function DeleteResumeButton({
   resume: ResumeSummary;
   userId: string;
 }) {
+  const [hovered, setHovered] = useState(false);
+  const [tooltipDismissed, setTooltipDismissed] = useState(false);
   const client = useQueryClient();
+  useEffect(() => {
+    if (!hovered) return;
+    function dismissOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setTooltipDismissed(true);
+    }
+    document.addEventListener("keydown", dismissOnEscape);
+    return () => document.removeEventListener("keydown", dismissOnEscape);
+  }, [hovered]);
+
   const mutation = useMutation({
     mutationFn: async () =>
       (
@@ -213,22 +218,45 @@ export function DeleteResumeButton({
       mutation.mutate();
   }
   return (
-    <div className="delete-control">
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={mutation.isPending}
-        onClick={remove}
+    <>
+      <div
+        className="delete-control"
+        onMouseEnter={() => {
+          setHovered(true);
+          setTooltipDismissed(false);
+        }}
+        onMouseLeave={() => setHovered(false)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setTooltipDismissed(true);
+        }}
       >
-        {mutation.isPending ? "Excluindo…" : "Excluir"}
-      </Button>
+        <button
+          type="button"
+          className="row-action resume-delete"
+          aria-label={`${mutation.isPending ? "Excluindo" : "Excluir"} ${resume.nome_arquivo}`}
+          disabled={mutation.isPending}
+          onClick={remove}
+          onFocus={() => setTooltipDismissed(false)}
+        >
+          {mutation.isPending ? (
+            <LoaderCircle size={16} aria-hidden="true" />
+          ) : (
+            <Trash2 size={16} aria-hidden="true" />
+          )}
+        </button>
+        {!tooltipDismissed && (
+          <span className="delete-tooltip" aria-hidden="true">
+            <span>{mutation.isPending ? "Excluindo…" : "Excluir"}</span>
+          </span>
+        )}
+      </div>
       {mutation.error && (
-        <p className="field-error" role="alert">
+        <p className="field-error resume-delete-error" role="alert">
           {mutation.error instanceof Error
             ? mutation.error.message
             : "Não foi possível excluir."}
         </p>
       )}
-    </div>
+    </>
   );
 }

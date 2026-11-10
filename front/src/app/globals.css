@@ -246,49 +246,56 @@ svg {
 .brand-action:hover {
   text-decoration-thickness: 2px;
 }
-.list-summary {
+.history-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.history-count {
+  border-radius: 4px;
+  background: var(--raised);
   color: var(--muted);
-  font-size: 13px;
-  margin: 4px 0 12px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
 }
 .resume-list {
   padding: 0;
-  margin: 0;
+  margin: 8px 0 0;
   list-style: none;
 }
-.resume-list li {
-  display: flex;
-  justify-content: space-between;
+.resume-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
   align-items: center;
-  gap: 12px;
-  min-height: 85px;
-  padding-block: 16px;
+  gap: 2px 4px;
+  padding: 8px;
+  margin-inline: -8px;
+}
+.resume-row + .resume-row {
   border-top: 1px solid var(--rule);
 }
+.resume-row:hover {
+  background: var(--ground);
+}
 .resume-identity {
-  display: flex;
-  gap: 12px;
-  min-width: 0;
-  align-items: flex-start;
-}
-.resume-identity > svg {
-  color: var(--muted);
-  margin-top: 3px;
-}
-.resume-identity > div {
+  grid-column: 1 / -1;
   min-width: 0;
 }
 .resume-name {
-  font-weight: 500;
-  overflow-wrap: anywhere;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
 }
 .resume-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 8px;
   color: var(--muted);
-  font-size: 13px;
-  margin-top: 6px;
+  font-size: 12px;
+  margin-top: 2px;
   align-items: center;
 }
 .status-label {
@@ -299,28 +306,36 @@ svg {
   padding: 1px 6px;
   white-space: nowrap;
 }
-.resume-trailing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.resume-trailing time {
+.resume-row > time {
+  justify-self: end;
+  margin-inline-end: 8px;
   color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  display: block;
+  white-space: nowrap;
 }
 .row-action {
   min-width: 44px;
   min-height: 44px;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
   border-radius: var(--radius-control);
 }
-.row-action:hover {
+.row-action:hover,
+.row-action:focus-visible {
   background: var(--raised);
+  color: var(--text);
+}
+.resume-details-toggle {
+  gap: 4px;
+  padding-inline: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.resume-details-toggle[aria-expanded="true"] > svg {
+  transform: rotate(180deg);
 }
 .empty-state {
   display: flex;
@@ -906,13 +921,11 @@ progress::-moz-progress-bar {
   font-size: 12px;
 }
 .read-only-details,
-.resume-recovery,
 .round-history,
 .cancel-interview {
   min-width: 0;
 }
 .read-only-details summary,
-.resume-recovery summary,
 .round-history summary,
 .cancel-interview summary,
 .latex-fallback-details summary {
@@ -1143,12 +1156,9 @@ progress::-moz-progress-bar {
 .resume-recovery {
   grid-column: 1 / -1;
   min-width: 0;
-  padding-top: 4px;
+  margin-top: 6px;
+  padding: 8px 0 4px;
   border-top: 1px solid var(--rule);
-}
-.resume-recovery summary {
-  color: var(--muted);
-  font-size: 13px;
 }
 .resume-recovery a {
   color: var(--brand-blue-text);
@@ -1158,7 +1168,6 @@ progress::-moz-progress-bar {
 .recovery-results {
   display: grid;
   gap: 18px;
-  padding: 8px 0 12px;
 }
 .recovery-results section {
   display: grid;
@@ -1187,13 +1196,41 @@ progress::-moz-progress-bar {
   color: var(--muted);
 }
 .delete-control {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  grid-column: 1 / -1;
+  position: relative;
 }
-.resume-secondary-actions {
-  display: contents;
+.resume-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.resume-delete:not(:disabled):is(:hover, :focus-visible) {
+  color: var(--negative);
+  outline-color: var(--negative);
+  background: #fff0f0;
+}
+.delete-tooltip {
+  visibility: hidden;
+  position: absolute;
+  z-index: 1;
+  inset-inline-end: 0;
+  top: 100%;
+  padding-top: 4px;
+  white-space: nowrap;
+}
+.delete-tooltip > span {
+  display: block;
+  border-radius: var(--radius-control);
+  background: var(--primary);
+  color: var(--surface);
+  font-size: 12px;
+  padding: 3px 8px;
+}
+.delete-control:hover .delete-tooltip,
+.resume-delete:focus-visible + .delete-tooltip {
+  visibility: visible;
+}
+.resume-delete-error {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
 }
 .editor-summary {
   display: grid;
@@ -1329,12 +1366,15 @@ progress::-moz-progress-bar {
   .recovery-results {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .resume-list li {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+  .resume-row {
+    grid-template-columns: minmax(0, 1fr) repeat(4, auto);
   }
-  .resume-trailing {
-    align-items: center;
+  .resume-identity {
+    grid-column: auto;
+  }
+  .resume-row .row-action {
+    min-width: 36px;
+    min-height: 36px;
   }
 }
 @media (min-width: 1024px) {
@@ -1356,12 +1396,6 @@ progress::-moz-progress-bar {
   }
 }
 @media (max-width: 639px) {
-  .resume-list li {
-    align-items: flex-start;
-  }
-  .resume-trailing {
-    align-items: flex-end;
-  }
   .drop-zone > div {
     align-items: flex-start;
     flex-direction: column;

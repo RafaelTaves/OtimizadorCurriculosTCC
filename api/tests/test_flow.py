@@ -59,6 +59,63 @@ def test_complete_flow(client, auth, worker, database):
     assert not list(worker.storage.root.glob("temporary/*"))
 
 
+def test_export_reuses_matching_preview_and_preserves_pdf_on_unchanged_save(
+    client, auth, worker, database
+):
+    queued = enqueue(client, auth, upload_confirm(client, auth))
+    assert worker.run_once()
+    status = client.get(queued.headers["location"], headers=auth).json()
+    assert client.post(f"/v1/otimizacoes/{status['id']}/confirmacao", headers=auth).is_success
+    url = f"/v1/curriculos/{status['curriculo_gerado_id']}"
+    current = client.get(url, headers=auth)
+    latex = current.json()["latex_gerado"]
+    waiting_ai = enqueue(client, auth, upload_confirm(client, auth), "waiting-ai")
+    assert waiting_ai.status_code == 202
+    preview = client.post(f"{url}/preview", headers=auth, json={"latex": latex})
+    assert preview.status_code == 202
+
+    worker.lane = "pdf"
+    assert worker.run_once()
+    assert client.get(waiting_ai.headers["location"], headers=auth).json()["status"] == "pendente"
+    state = client.get(preview.headers["location"], headers=auth).json()
+    assert state["status"] == "concluida"
+    preview_pdf = client.get(state["download_pdf"], headers=auth).content
+
+    exported = client.post(f"{url}/renderizacoes", headers=auth).json()
+    assert exported["status"] == "concluida"
+    assert client.get(exported["download_pdf"], headers=auth).content == preview_pdf
+    assert not worker.run_once()
+    assert worker.compiler.calls == 1
+
+    with database.sessions.begin() as session:
+        attempt = session.get(Attempt, UUID(state["id"]))
+        attempt.expires_at = utcnow() - timedelta(seconds=1)
+    worker.cleanup()
+
+    saved = client.put(
+        f"{url}/latex", headers={**auth, "If-Match": current.headers["etag"]}, json={"latex": latex}
+    )
+    assert saved.headers["etag"] == current.headers["etag"]
+    assert saved.json()["pdf_disponivel"]
+    assert client.post(f"{url}/renderizacoes", headers=auth).json()["id"] == exported["id"]
+    assert client.get(exported["download_pdf"], headers=auth).content == preview_pdf
+
+    assert client.put(
+        f"{url}/latex",
+        headers={**auth, "If-Match": saved.headers["etag"]},
+        json={"latex": latex + "\n% edição"},
+    ).is_success
+    queued_pdf = client.post(f"{url}/renderizacoes", headers=auth).json()
+    assert queued_pdf["status"] == "pendente"
+    assert client.post(f"{url}/renderizacoes", headers=auth).json()["id"] == queued_pdf["id"]
+    worker.lane = "ai"
+    assert worker.run_once()
+    assert not worker.run_once()
+    worker.lane = "pdf"
+    assert worker.run_once()
+    assert worker.compiler.calls == 2
+
+
 def test_idempotency_quota_and_month_reset(client, auth, worker, database):
     original = upload_confirm(client, auth)
     first = enqueue(client, auth, original, "same")
@@ -133,7 +190,10 @@ def test_etag_and_stale_export(client, auth, worker):
     queued = enqueue(client, auth, original)
     worker.run_once()
     generated = client.get(queued.headers["location"], headers=auth).json()["curriculo_gerado_id"]
-    assert client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code == 200
+    assert (
+        client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code
+        == 200
+    )
     url = f"/v1/curriculos/{generated}/latex"
     assert client.put(url, headers=auth, json={"latex": "test"}).status_code == 428
     assert (
@@ -178,7 +238,10 @@ def test_expired_preview_purged_without_deleting_saved_resume(client, auth, work
     queued = enqueue(client, auth, original)
     worker.run_once()
     generated = client.get(queued.headers["location"], headers=auth).json()["curriculo_gerado_id"]
-    assert client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code == 200
+    assert (
+        client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code
+        == 200
+    )
     preview = client.post(
         f"/v1/curriculos/{generated}/preview", headers=auth, json={"latex": "any test latex"}
     )
@@ -246,7 +309,10 @@ def test_preview_failure_is_safe_and_does_not_consume_ai(client, auth, worker):
     queued = enqueue(client, auth, original)
     worker.run_once()
     generated = client.get(queued.headers["location"], headers=auth).json()["curriculo_gerado_id"]
-    assert client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code == 200
+    assert (
+        client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code
+        == 200
+    )
 
     class BrokenCompiler:
         def compile(self, latex):

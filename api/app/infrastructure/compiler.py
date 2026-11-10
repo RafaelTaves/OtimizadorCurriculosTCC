@@ -1,10 +1,14 @@
+import logging
 import re
 import subprocess
 import tempfile
+from time import monotonic
 from uuid import uuid4
 
 from app.config import Settings
 from app.service.errors import ProcessingError
+
+logger = logging.getLogger(__name__)
 
 
 class DockerCompiler:
@@ -42,8 +46,10 @@ class DockerCompiler:
             "/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=700",
             self.settings.compiler_image,
         ]
+        needs_cleanup = True
         try:
             with tempfile.TemporaryFile() as pdf_file, tempfile.TemporaryFile() as log:
+                started = monotonic()
                 result = subprocess.run(
                     command,
                     input=latex.encode("utf-8"),
@@ -52,6 +58,8 @@ class DockerCompiler:
                     timeout=self.settings.compiler_timeout_seconds,
                     check=False,
                 )
+                logger.info("compiler docker_run_ms=%d", int((monotonic() - started) * 1000))
+                needs_cleanup = result.returncode in (125, 126, 127)
                 if result.returncode != 0:
                     if result.returncode in (125, 126, 127):
                         raise ProcessingError(
@@ -85,9 +93,15 @@ class DockerCompiler:
                 "compilador_indisponivel", "O compilador está indisponível.", transient=True
             ) from exc
         finally:
-            try:
-                subprocess.run(
-                    ["docker", "rm", "--force", name], capture_output=True, timeout=10, check=False
-                )
-            except OSError, subprocess.TimeoutExpired:
-                pass
+            if needs_cleanup:
+                started = monotonic()
+                try:
+                    subprocess.run(
+                        ["docker", "rm", "--force", name],
+                        capture_output=True,
+                        timeout=10,
+                        check=False,
+                    )
+                except OSError, subprocess.TimeoutExpired:
+                    pass
+                logger.info("compiler docker_cleanup_ms=%d", int((monotonic() - started) * 1000))
