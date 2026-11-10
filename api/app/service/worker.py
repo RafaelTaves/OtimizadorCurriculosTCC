@@ -10,9 +10,12 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.infrastructure.database import Database
 from app.infrastructure.models import Attempt, Operation, Resume, Status, utcnow
+from app.presentation.schemas import SourceRecord
 from app.service.errors import AppError, ProcessingError
-from app.service.ports import Compiler, ModelResult, Optimizer, Storage
-from app.service.proposals import TEMPLATE_VERSION, ProposalValidator
+from app.service.interview_worker import InterviewProcessor
+from app.service.interviews import InterviewService
+from app.service.ports import Compiler, InterviewAnalyzer, ModelResult, Optimizer, Storage
+from app.service.proposals import TEMPLATE_VERSION, ProposalValidator, confirmed_sources
 from app.service.resumes import lock_user
 
 logger = logging.getLogger(__name__)
@@ -26,6 +29,8 @@ class Worker:
         storage: Storage,
         optimizer: Optimizer,
         compiler: Compiler,
+        *,
+        analyzer: InterviewAnalyzer | None = None,
     ) -> None:
         self.settings = settings
         self.database = database
@@ -33,8 +38,14 @@ class Worker:
         self.optimizer = optimizer
         self.compiler = compiler
         self.validator = ProposalValidator()
+        self.interviews = InterviewProcessor(
+            settings, database, InterviewService(settings, storage), analyzer
+        )
 
     def claim(self) -> Attempt | None:
+        analysis = self.interviews.claim()
+        if analysis is not None:
+            return analysis
         now = utcnow()
         with self.database.sessions.begin() as session:
             stale = list(
@@ -42,6 +53,7 @@ class Worker:
                     select(Attempt)
                     .where(
                         Attempt.status == Status.PROCESSING,
+                        Attempt.tipo_operacao != Operation.ANALYSIS,
                         Attempt.lease_until < now,
                     )
                     .with_for_update(skip_locked=True)
@@ -65,6 +77,7 @@ class Worker:
                 select(Attempt)
                 .where(
                     Attempt.status == Status.PENDING,
+                    Attempt.tipo_operacao != Operation.ANALYSIS,
                     Attempt.available_at <= now,
                 )
                 .order_by(Attempt.created_at)
@@ -109,20 +122,48 @@ class Worker:
         if claim is None:
             return False
         started = monotonic()
+        if claim.tipo_operacao == Operation.ANALYSIS:
+            self.interviews.execute(claim)
+            logger.info(
+                "operation=%s elapsed_ms=%d",
+                claim.tipo_operacao,
+                int((monotonic() - started) * 1000),
+            )
+            return True
+        model_result: ModelResult | None = None
         try:
             if not claim.entrada_temporaria_key:
                 raise ProcessingError("entrada_indisponivel", "Entrada da tentativa indisponível.")
             payload = json.loads(self.storage.read(claim.entrada_temporaria_key))
-            model_result: ModelResult | None = None
             pdf: bytes | None = None
             if claim.tipo_operacao == Operation.OPTIMIZATION:
-                model_result = self.optimizer.optimize(payload["texto"], payload["vaga"])
-                self.validator.validate(model_result.proposal, payload["texto"], payload["vaga"])
+                if payload.get("sessao_complementacao_id"):
+                    complements = [SourceRecord.model_validate(c) for c in payload["complementos"]]
+                    sources = confirmed_sources(payload["texto"], complements)
+                    model_result = self.optimizer.optimize(
+                        payload["texto"],
+                        payload["vaga"],
+                        sources=sources,
+                        feedback=claim.mensagem_erro,
+                    )
+                    self.validator.validate(model_result.proposal, sources, payload["vaga"])
+                    model_result.proposal.fontes_confirmadas = complements
+                    model_result.proposal.sessao_complementacao_id = claim.sessao_complementacao_id
+                    model_result.proposal.versao_schema = 2
+                else:
+                    model_result = self.optimizer.optimize(
+                        payload["texto"],
+                        payload["vaga"],
+                        feedback=claim.mensagem_erro,
+                    )
+                    self.validator.validate(
+                        model_result.proposal, payload["texto"], payload["vaga"]
+                    )
             else:
                 pdf = self.compiler.compile(payload["latex"])
             self._complete(claim, model_result, pdf)
         except ProcessingError as exc:
-            self._fail(claim, exc)
+            self._fail(claim, exc, model_result)
         except AppError:
             self._fail(
                 claim, ProcessingError("entrada_indisponivel", "Entrada indisponível ou expirada.")
@@ -167,8 +208,8 @@ class Worker:
                     attempt.status = Status.REVIEW
                     attempt.etapa = "revisao"
                     attempt.modelo = result.model
-                    attempt.tokens_entrada = result.input_tokens
-                    attempt.tokens_saida = result.output_tokens
+                    attempt.tokens_entrada = (attempt.tokens_entrada or 0) + result.input_tokens
+                    attempt.tokens_saida = (attempt.tokens_saida or 0) + result.output_tokens
                 elif pdf is not None:
                     if attempt.tipo_operacao == Operation.PREVIEW:
                         if attempt.expires_at and attempt.expires_at <= utcnow():
@@ -209,13 +250,19 @@ class Worker:
             result.output_tokens if result else 0,
         )
 
-    def _fail(self, claim: Attempt, error: ProcessingError) -> None:
+    def _fail(
+        self, claim: Attempt, error: ProcessingError, result: ModelResult | None = None
+    ) -> None:
         key: str | None = None
         with self.database.sessions.begin() as session:
             locked = self._locked_attempt(session, claim)
             if locked is None:
                 return
             attempt, _ = locked
+            if result:
+                attempt.modelo = result.model
+                attempt.tokens_entrada = (attempt.tokens_entrada or 0) + result.input_tokens
+                attempt.tokens_saida = (attempt.tokens_saida or 0) + result.output_tokens
             if error.transient and attempt.executions < self.settings.worker_max_executions:
                 attempt.status = Status.PENDING
                 attempt.etapa = "nova_execucao"
@@ -242,6 +289,7 @@ class Worker:
         )
 
     def cleanup(self) -> None:
+        self.interviews.cleanup()
         keys: list[str] = []
         with self.database.sessions.begin() as session:
             terminal = session.scalars(

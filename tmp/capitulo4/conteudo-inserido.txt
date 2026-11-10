@@ -1,0 +1,39 @@
+4.1 - Arquitetura do Sistema
+A implementação adota a arquitetura cliente-servidor, apresentada na Figura 4.1. O cliente corresponde ao navegador utilizado para acessar a aplicação, enquanto o servidor recebe as solicitações, aplica as regras de negócio e disponibiliza os resultados. Essa organização separa a interação com o usuário do processamento e do armazenamento das informações.
+A interface foi desenvolvida com Next.js e TypeScript. O Next.js também encaminha as operações à API implementada em Python com FastAPI, responsável pela autenticação, pelo acesso aos currículos e pela coordenação do processamento. O PostgreSQL mantém os registros da aplicação, e os documentos ficam em armazenamento privado.
+O servidor integra a aplicação à OpenAI para a complementação de informações e a geração da proposta, mediante consentimento do usuário. A geração e a compilação do LaTeX em PDF são processadas em segundo plano, enquanto a interface permite acompanhar o andamento. A Figura 4.1 reúne essas responsabilidades em uma visão panorâmica, sem detalhar a organização interna do back-end.
+
+Figura 4.1: Arquitetura cliente-servidor da aplicação. Fonte: Elaborado pelos autores (2026).
+4.2 - Interfaces da Aplicação
+As interfaces acompanham a sequência de uso do sistema: autenticação, envio do currículo e da vaga, revisão do texto extraído, escolha do processamento e conferência do resultado. As Figuras 4.2 a 4.6 apresentam as telas dessas etapas iniciais. A revisão humana e o consentimento aparecem como ações explícitas ao longo do fluxo.
+4.2.1 - Autenticação
+A tela de login, apresentada na Figura 4.2, solicita e-mail ou nome de usuário e senha. O botão de entrada permite acessar o espaço pessoal, e o link de criação de conta encaminha ao cadastro. A autenticação vincula os currículos à conta do usuário e antecede o acesso às funcionalidades internas.
+
+Figura 4.2: Tela de login. Fonte: Captura da aplicação pelos autores (2026).
+4.2.2 - Painel do usuário
+Após a autenticação, o painel reúne o acesso aos currículos e às principais ações da aplicação. Na Figura 4.3, a conta ainda não possui documentos, por isso a interface apresenta a orientação para iniciar o primeiro envio. O menu lateral oferece acesso ao painel, à lista de currículos, ao novo currículo e à conta.
+O painel também apresenta a disponibilidade de otimizações e a data de renovação informadas pela API. A sequência visual de envio, revisão, otimização e edição orienta o usuário sobre as etapas seguintes. Esses valores representam o estado da conta no momento da captura.
+
+Figura 4.3: Painel do usuário antes do primeiro envio. Fonte: Captura da aplicação pelos autores (2026).
+4.2.3 - Envio do currículo e da vaga
+Na tela de novo currículo, ilustrada na Figura 4.4, o usuário seleciona um arquivo PDF com texto selecionável ou DOCX e informa a descrição da vaga. A interface apresenta os limites aceitos e reúne as duas entradas necessárias para contextualizar a otimização.
+O botão “Enviar e revisar” inicia a extração e conduz à conferência do texto. O aviso no formulário esclarece que essa operação ainda não envia o conteúdo à IA: a revisão e o consentimento são realizados nas etapas seguintes.
+
+Figura 4.4: Formulário de envio do currículo e da vaga. Fonte: Captura da aplicação pelos autores (2026).
+4.2.4 - Revisão do texto extraído
+A Figura 4.5 apresenta o texto obtido a partir do arquivo enviado em um campo editável. O usuário pode conferir nomes, datas e demais informações, corrigindo eventuais problemas de extração antes de confirmar o conteúdo. A tela também permite consultar a descrição da vaga associada ao currículo.
+A confirmação é obrigatória mesmo quando não há correções. O estado “Ainda não confirmado” e o botão “Confirmar texto” tornam essa exigência visível. Essa etapa estabelece o conteúdo que será utilizado no processamento posterior, sem substituir a autorização específica para envio à OpenAI.
+
+Figura 4.5: Revisão e confirmação do texto extraído. Fonte: Captura da aplicação pelos autores (2026).
+4.2.5 - Escolha do fluxo e consentimento
+Depois da confirmação do texto, o usuário escolhe entre gerar a proposta diretamente ou complementar as informações por meio de perguntas. A Figura 4.6 apresenta autorizações distintas para essas operações. Na captura, o consentimento para a geração está marcado, enquanto o da complementação está desmarcado e seu botão permanece desabilitado.
+A separação dos controles informa quais dados serão enviados em cada caminho. Na geração direta, são utilizados o texto confirmado e a descrição da vaga. Na complementação, o contexto também pode incluir as respostas fornecidas pelo usuário. A geração após a complementação depende de consentimento específico para essa finalidade.
+
+Figura 4.6: Escolha do processamento e consentimentos. Fonte: Captura da aplicação pelos autores (2026).
+4.2.6 - Complementação, proposta e edição
+No caminho opcional de complementação, a aplicação apresenta perguntas relacionadas ao currículo e à vaga. O usuário pode responder ou pular perguntas e, ao final, revisar e confirmar as informações, resolvendo eventuais divergências. Essa etapa antecede a solicitação de geração da proposta.
+A tela de proposta permite acompanhar o processamento e conferir o conteúdo gerado, as alterações, as evidências e as lacunas apontadas. Após a confirmação da revisão humana, o editor permite ajustar o código LaTeX, solicitar uma prévia do PDF e salvar as alterações. A prévia não salva o código; a exportação do PDF final exige a compilação da versão salva. A lista de currículos permite retomar os documentos e solicitar sua exclusão.
+4.2.7 - Interface de documentação da API
+Além das telas destinadas ao usuário, a implementação disponibiliza a documentação interativa da API, ilustrada na Figura 4.7. Essa interface organiza as operações de autenticação, currículos e otimização, permitindo consultar e executar requisições durante o desenvolvimento. Ela funciona como apoio técnico à integração e à verificação funcional; o uso cotidiano da aplicação ocorre pelas telas web apresentadas anteriormente.
+
+Figura 4.7: Documentação interativa dos endpoints da API. Fonte: Captura da aplicação pelos autores (2026).

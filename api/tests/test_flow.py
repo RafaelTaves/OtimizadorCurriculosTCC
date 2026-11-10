@@ -83,7 +83,7 @@ def test_failure_releases_quota_and_retry_same_attempt(client, auth, worker, dat
     queued = enqueue(client, auth, original)
 
     class BrokenOptimizer:
-        def optimize(self, text, job):
+        def optimize(self, text, job, *, feedback=None):
             raise ProcessingError("openai_indisponivel", "Indisponível", transient=True)
 
     worker.optimizer = BrokenOptimizer()
@@ -133,6 +133,7 @@ def test_etag_and_stale_export(client, auth, worker):
     queued = enqueue(client, auth, original)
     worker.run_once()
     generated = client.get(queued.headers["location"], headers=auth).json()["curriculo_gerado_id"]
+    assert client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code == 200
     url = f"/v1/curriculos/{generated}/latex"
     assert client.put(url, headers=auth, json={"latex": "test"}).status_code == 428
     assert (
@@ -177,6 +178,7 @@ def test_expired_preview_purged_without_deleting_saved_resume(client, auth, work
     queued = enqueue(client, auth, original)
     worker.run_once()
     generated = client.get(queued.headers["location"], headers=auth).json()["curriculo_gerado_id"]
+    assert client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code == 200
     preview = client.post(
         f"/v1/curriculos/{generated}/preview", headers=auth, json={"latex": "any test latex"}
     )
@@ -244,6 +246,7 @@ def test_preview_failure_is_safe_and_does_not_consume_ai(client, auth, worker):
     queued = enqueue(client, auth, original)
     worker.run_once()
     generated = client.get(queued.headers["location"], headers=auth).json()["curriculo_gerado_id"]
+    assert client.post(f"/v1/otimizacoes/{queued.json()['id']}/confirmacao", headers=auth).status_code == 200
 
     class BrokenCompiler:
         def compile(self, latex):

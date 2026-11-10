@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     worker_lease_seconds: int = Field(default=300, ge=10)
     worker_max_executions: int = Field(default=3, ge=1)
     retry_base_seconds: int = Field(default=5, ge=1)
+    interview_questions_per_round: int = Field(default=3, ge=1, le=3)
+    interview_max_rounds: int = Field(default=2, ge=1, le=2)
+    interview_sessions_per_day: int = Field(default=3, ge=1)
+    interview_executions_per_day: int = Field(default=12, ge=1)
+    interview_ttl_seconds: int = Field(default=86400, ge=60)
+    interview_max_confirmed_chars: int = Field(default=12000, ge=1, le=12000)
+    interview_max_context_chars: int = Field(default=120000, ge=1000)
+    interview_max_output_tokens: int = Field(default=3000, ge=256, le=10000)
+    interview_consent_version: str = "complementacao-v1"
 
     @model_validator(mode="after")
     def validate_worker_lease(self) -> Settings:

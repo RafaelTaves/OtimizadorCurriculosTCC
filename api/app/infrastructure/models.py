@@ -14,6 +14,9 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
 )
+from sqlalchemy import (
+    text as sql_text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,6 +32,7 @@ class Operation(StrEnum):
     OPTIMIZATION = "otimizacao"
     PREVIEW = "preview"
     EXPORT = "exportacao"
+    ANALYSIS = "analise_complementacao"
 
 
 class Status(StrEnum):
@@ -101,7 +105,31 @@ class Attempt(Base):
         ),
         Index("ix_tentativas_cota", "usuario_id", "tipo_operacao", "created_at", "status"),
         Index("ix_tentativas_fila", "status", "available_at"),
-        CheckConstraint("tipo_operacao IN ('otimizacao','preview','exportacao')"),
+        ForeignKeyConstraint(
+            ["sessao_complementacao_id", "curriculo_id", "usuario_id"],
+            [
+                "sessoes_complementacao.id",
+                "sessoes_complementacao.curriculo_id",
+                "sessoes_complementacao.usuario_id",
+            ],
+            name="fk_tentativa_sessao_dono",
+        ),
+        ForeignKeyConstraint(
+            ["rodada_complementacao_id", "sessao_complementacao_id"],
+            ["rodadas_complementacao.id", "rodadas_complementacao.sessao_id"],
+            name="fk_tentativa_rodada_sessao",
+        ),
+        Index(
+            "uq_otimizacao_sessao",
+            "sessao_complementacao_id",
+            unique=True,
+            postgresql_where=sql_text("tipo_operacao = 'otimizacao'"),
+            sqlite_where=sql_text("tipo_operacao = 'otimizacao'"),
+        ),
+        CheckConstraint(
+            "tipo_operacao IN ('otimizacao','preview','exportacao','analise_complementacao')",
+            name="ck_tentativas_operacao",
+        ),
         CheckConstraint(
             "status IN ('pendente','processando','aguardando_revisao',"
             "'concluida','falhou','cancelada')"
@@ -112,7 +140,14 @@ class Attempt(Base):
     # Nullable after deletion: preserve only technical quota/audit records until account deletion.
     curriculo_id: Mapped[UUID | None] = mapped_column(Uuid)
     curriculo_gerado_id: Mapped[UUID | None] = mapped_column(Uuid)
-    tipo_operacao: Mapped[str] = mapped_column(String(12))
+    tipo_operacao: Mapped[str] = mapped_column(String(32))
+    sessao_complementacao_id: Mapped[UUID | None] = mapped_column(Uuid)
+    rodada_complementacao_id: Mapped[UUID | None] = mapped_column(Uuid)
+    sessao_revisao_esperada: Mapped[int | None] = mapped_column(Integer)
+    execucoes_analise: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), default=list
+    )
+    execucoes_ciclo: Mapped[int] = mapped_column(Integer, default=0)
     idempotency_key: Mapped[str | None] = mapped_column(String(128))
     request_hash: Mapped[str] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(24), default=Status.PENDING)
@@ -133,3 +168,90 @@ class Attempt(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class Interview(Base):
+    __tablename__ = "sessoes_complementacao"
+    __table_args__ = (
+        UniqueConstraint("id", "usuario_id"),
+        UniqueConstraint("id", "curriculo_id", "usuario_id"),
+        ForeignKeyConstraint(
+            ["curriculo_id", "usuario_id"], ["curriculos.id", "curriculos.usuario_id"]
+        ),
+        CheckConstraint(
+            "status IN ('analisando','aguardando_respostas','aguardando_confirmacao',"
+            "'confirmada','falhou','cancelada','expirada')",
+            name="ck_sessao_status",
+        ),
+        Index("ix_sessoes_usuario_data", "usuario_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    usuario_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))
+    curriculo_id: Mapped[UUID | None] = mapped_column(Uuid)
+    status: Mapped[str] = mapped_column(String(32), default="analisando")
+    revisao: Mapped[int] = mapped_column(Integer, default=1)
+    rodada_atual: Mapped[int] = mapped_column(Integer, default=1)
+    texto_confirmado_snapshot: Mapped[str | None] = mapped_column(Text)
+    descricao_vaga_snapshot: Mapped[str | None] = mapped_column(Text)
+    contexto_hash: Mapped[str] = mapped_column(String(64))
+    complementos: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), default=list
+    )
+    conflitos: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), default=list
+    )
+    resolucoes: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), default=list
+    )
+    consentimento_em: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    consentimento_versao: Mapped[str] = mapped_column(String(60))
+    confirmado_em: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    codigo_erro: Mapped[str | None] = mapped_column(String(60))
+    mensagem_erro: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class InterviewRound(Base):
+    __tablename__ = "rodadas_complementacao"
+    __table_args__ = (UniqueConstraint("sessao_id", "numero"), UniqueConstraint("id", "sessao_id"))
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    sessao_id: Mapped[UUID] = mapped_column(
+        ForeignKey("sessoes_complementacao.id", ondelete="CASCADE")
+    )
+    numero: Mapped[int] = mapped_column(Integer)
+    perguntas: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), default=list
+    )
+    respostas: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"), default=list
+    )
+    complemento_livre: Mapped[str | None] = mapped_column(Text)
+    complemento_livre_id: Mapped[UUID | None] = mapped_column(Uuid)
+    acao_apos_respostas: Mapped[str | None] = mapped_column(String(12))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    answered_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class IdempotencyRecord(Base):
+    __tablename__ = "registros_idempotencia"
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "chave"),
+        ForeignKeyConstraint(
+            ["sessao_id", "usuario_id"],
+            ["sessoes_complementacao.id", "sessoes_complementacao.usuario_id"],
+        ),
+        Index("ix_idempotencia_limite", "usuario_id", "operacao", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    usuario_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))
+    sessao_id: Mapped[UUID | None] = mapped_column(Uuid)
+    chave: Mapped[str] = mapped_column(String(128))
+    operacao: Mapped[str] = mapped_column(String(32))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    resposta: Mapped[dict[str, object] | None] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql")
+    )
+    status_http: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)

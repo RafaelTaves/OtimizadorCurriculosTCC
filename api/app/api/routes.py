@@ -6,9 +6,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select
 
 from app.api.dependencies import ServicesDep, SessionDep, UserDep
-from app.infrastructure.models import Attempt, Operation, Resume, utcnow
+from app.infrastructure.models import Attempt, Operation, Resume, Status, utcnow
 from app.presentation.schemas import (
     AttemptView,
+    AttemptPage,
     ConfirmText,
     LatexInput,
     OptimizeInput,
@@ -26,7 +27,7 @@ from app.service.resumes import owned_resume
 router = APIRouter(prefix="/v1")
 
 
-def resume_view(resume: Resume) -> ResumeView:
+def resume_view(resume: Resume, db: SessionDep) -> ResumeView:
     view = ResumeView.model_validate(resume)
     view.pdf_disponivel = bool(resume.pdf_objeto_key and resume.pdf_revisao == resume.latex_revisao)
     if view.pdf_disponivel:
@@ -37,6 +38,19 @@ def resume_view(resume: Resume) -> ResumeView:
     ]
     if resume.tipo == "otimizado" and resume.latex_revisao > 1:
         view.avisos.append("A revisão automática da geração não abrange edições manuais do LaTeX.")
+    if resume.tipo == "otimizado" and db is not None:
+        origin = db.scalar(
+            select(Attempt)
+            .where(
+                Attempt.curriculo_gerado_id == resume.id,
+                Attempt.usuario_id == resume.usuario_id,
+                Attempt.tipo_operacao == Operation.OPTIMIZATION,
+            )
+            .order_by(Attempt.created_at.desc())
+        )
+        if origin:
+            view.tentativa_origem_id = origin.id
+            view.revisao_humana_confirmada = origin.status == Status.COMPLETED
     return view
 
 
@@ -45,6 +59,7 @@ def attempt_view(attempt: Attempt, db: SessionDep) -> AttemptView:
         Operation.OPTIMIZATION: "otimizacoes",
         Operation.PREVIEW: "previews",
         Operation.EXPORT: "renderizacoes",
+        Operation.ANALYSIS: "complementacoes",
     }[Operation(attempt.tipo_operacao)]
     view = AttemptView.model_validate(
         {
@@ -112,7 +127,7 @@ def upload(
             arquivo.filename or "",
             descricao_vaga,
         )
-        return resume_view(resume)
+        return resume_view(resume, db)
     finally:
         arquivo.file.close()
 
@@ -125,7 +140,7 @@ def confirm_text(
     container: ServicesDep,
     db: SessionDep,
 ) -> ResumeView:
-    return resume_view(container.resumes.confirm_text(db, user.id, resume_id, data.texto))
+    return resume_view(container.resumes.confirm_text(db, user.id, resume_id, data.texto), db)
 
 
 @router.get("/curriculos", tags=["Currículos"])
@@ -143,7 +158,7 @@ def history(
         .limit(tamanho)
     )
     return ResumePage(
-        itens=[resume_view(item) for item in resumes], total=total, pagina=pagina, tamanho=tamanho
+        itens=[resume_view(item, db) for item in resumes], total=total, pagina=pagina, tamanho=tamanho
     )
 
 
@@ -151,7 +166,50 @@ def history(
 def get_resume(resume_id: UUID, user: UserDep, db: SessionDep, response: Response) -> ResumeView:
     resume = owned_resume(db, user.id, resume_id)
     response.headers["ETag"] = f'"{resume.latex_revisao}"'
-    return resume_view(resume)
+    return resume_view(resume, db)
+
+
+@router.get("/otimizacoes", tags=["Otimização"])
+def optimization_history(
+    curriculo_id: UUID,
+    user: UserDep,
+    db: SessionDep,
+    pagina: Annotated[int, Query(ge=1)] = 1,
+    tamanho: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AttemptPage:
+    original = owned_resume(db, user.id, curriculo_id)
+    if original.tipo != "original":
+        raise AppError("operacao_invalida", "Informe o currículo original.", 422)
+    query = select(Attempt).where(
+        Attempt.usuario_id == user.id,
+        Attempt.curriculo_id == original.id,
+        Attempt.tipo_operacao == Operation.OPTIMIZATION,
+    )
+    total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    items = db.scalars(
+        query.order_by(Attempt.created_at.desc(), Attempt.id)
+        .offset((pagina - 1) * tamanho)
+        .limit(tamanho)
+    )
+    return AttemptPage(
+        itens=[
+            {
+                "id": item.id,
+                "curriculo_id": item.curriculo_id,
+                "curriculo_gerado_id": item.curriculo_gerado_id,
+                "sessao_complementacao_id": item.sessao_complementacao_id,
+                "status": item.status,
+                "etapa": item.etapa,
+                "codigo_erro": item.codigo_erro,
+                "created_at": item.created_at,
+                "completed_at": item.completed_at,
+            }
+            for item in items
+        ],
+        total=total,
+        pagina=pagina,
+        tamanho=tamanho,
+    )
 
 
 @router.put("/curriculos/{resume_id}/latex", tags=["Editor"])
@@ -166,7 +224,7 @@ def save_latex(
 ) -> ResumeView:
     resume = container.resumes.save_latex(db, user.id, resume_id, data.latex, if_match)
     response.headers["ETag"] = f'"{resume.latex_revisao}"'
-    return resume_view(resume)
+    return resume_view(resume, db)
 
 
 @router.post("/curriculos/{resume_id}/otimizacoes", status_code=202, tags=["Otimização"])
@@ -186,6 +244,7 @@ def optimize(
         Operation.OPTIMIZATION,
         idempotency_key=idempotency_key,
         consent=data.consentimento_envio_openai,
+        interview_id=data.sessao_complementacao_id,
     )
     view = attempt_view(attempt, db)
     response.headers["Location"] = view.acompanhamento
@@ -283,6 +342,17 @@ def download(
     formato: Literal["pdf", "tex"] = "pdf",
 ) -> Response:
     resume = owned_resume(db, user.id, resume_id)
+    if resume.tipo == "otimizado":
+        review = db.scalar(
+            select(Attempt.id).where(
+                Attempt.curriculo_gerado_id == resume.id,
+                Attempt.usuario_id == user.id,
+                Attempt.tipo_operacao == Operation.OPTIMIZATION,
+                Attempt.status == Status.COMPLETED,
+            )
+        )
+        if not review:
+            raise AppError("revisao_pendente", "Confirme a revisão da proposta antes de exportar.", 409)
     if formato == "tex":
         if not resume.latex_gerado:
             raise AppError("latex_indisponivel", "Código LaTeX indisponível.", 404)

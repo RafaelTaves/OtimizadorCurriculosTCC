@@ -14,6 +14,9 @@ from app.infrastructure.models import (
     ACTIVE_STATUSES,
     QUOTA_STATUSES,
     Attempt,
+    IdempotencyRecord,
+    Interview,
+    InterviewRound,
     Operation,
     Resume,
     Status,
@@ -45,6 +48,25 @@ def owned_resume(session: Session, user_id: UUID, resume_id: UUID, *, lock: bool
 
 def lock_user(session: Session, user_id: UUID) -> None:
     session.execute(select(User.id).where(User.id == user_id).with_for_update()).one()
+
+
+def require_human_review(session: Session, user_id: UUID, resume: Resume) -> None:
+    if resume.tipo != "otimizado":
+        return
+    confirmed = session.scalar(
+        select(Attempt.id).where(
+            Attempt.curriculo_gerado_id == resume.id,
+            Attempt.usuario_id == user_id,
+            Attempt.tipo_operacao == Operation.OPTIMIZATION,
+            Attempt.status == Status.COMPLETED,
+        )
+    )
+    if confirmed is None:
+        raise AppError(
+            "revisao_pendente",
+            "Confirme a revisão da proposta antes de editar ou exportar.",
+            409,
+        )
 
 
 class ResumeService:
@@ -122,6 +144,7 @@ class ResumeService:
             raise AppError(
                 "edicao_concorrente", "O currículo mudou. Recarregue antes de salvar.", 412
             )
+        require_human_review(session, user_id, resume)
         new_tex = self.storage.put(latex.encode("utf-8"))
         old_tex = resume.arquivo_objeto_key
         resume.arquivo_objeto_key = new_tex
@@ -181,6 +204,9 @@ class ResumeService:
             attempt.resultado_temporario_key = None
             attempt.curriculo_id = None
             attempt.curriculo_gerado_id = None
+            if resume.tipo == "original":
+                attempt.rodada_complementacao_id = None
+                attempt.sessao_complementacao_id = None
             if attempt.status in ACTIVE_STATUSES:
                 attempt.status = Status.CANCELLED
                 attempt.completed_at = utcnow()
@@ -188,6 +214,28 @@ class ResumeService:
                 attempt.status = Status.COMPLETED
             attempt.lease_token = None
         session.flush()
+        if resume.tipo == "original":
+            interviews = list(
+                session.scalars(
+                    select(Interview).where(
+                        Interview.usuario_id == user_id, Interview.curriculo_id == resume.id
+                    )
+                )
+            )
+            for interview in interviews:
+                for record in session.scalars(
+                    select(IdempotencyRecord).where(IdempotencyRecord.sessao_id == interview.id)
+                ):
+                    record.resposta = None
+                    record.sessao_id = None
+                session.flush()
+                for round_item in session.scalars(
+                    select(InterviewRound).where(InterviewRound.sessao_id == interview.id)
+                ):
+                    session.delete(round_item)
+                session.flush()
+                session.delete(interview)
+                session.flush()
         for item in resumes:
             keys.extend(k for k in (item.arquivo_objeto_key, item.pdf_objeto_key) if k)
         # Delete descendants first; keep anonymous technical attempts to prevent quota refunds.
@@ -238,9 +286,12 @@ class QueueService:
         idempotency_key: str | None = None,
         consent: bool = False,
         latex: str | None = None,
+        interview_id: UUID | None = None,
     ) -> Attempt:
         lock_user(session, user_id)
         resume = owned_resume(session, user_id, resume_id, lock=True)
+        if operation == Operation.ANALYSIS:
+            raise AppError("operacao_invalida", "Use o serviço de complementação.")
         payload: dict[str, object]
         if operation == Operation.OPTIMIZATION:
             if not consent:
@@ -258,9 +309,16 @@ class QueueService:
                     "idempotencia_obrigatoria", "Informe Idempotency-Key de até 128 caracteres."
                 )
             payload = {"texto": resume.texto_extraido, "vaga": resume.descricao_vaga}
+            if interview_id:
+                from app.service.interviews import InterviewService
+
+                payload = InterviewService(self.settings, self.storage).generation_sources(
+                    session, user_id, resume_id, interview_id, validate_context=False
+                )
         else:
             if resume.tipo != "otimizado":
                 raise AppError("operacao_invalida", "Selecione uma versão otimizada.")
+            require_human_review(session, user_id, resume)
             payload = {"latex": latex if latex is not None else resume.latex_gerado}
             if not payload["latex"]:
                 raise AppError("latex_inexistente", "Não há código LaTeX para compilar.", 422)
@@ -269,6 +327,13 @@ class QueueService:
             str(resume_id).encode() + operation.encode() + encoded
         ).hexdigest()
         if idempotency_key:
+            if session.scalar(
+                select(IdempotencyRecord.id).where(
+                    IdempotencyRecord.usuario_id == user_id,
+                    IdempotencyRecord.chave == idempotency_key,
+                )
+            ):
+                raise AppError("chave_reutilizada", "Chave usada em outra operação.", 409)
             existing = session.scalar(
                 select(Attempt).where(
                     Attempt.usuario_id == user_id, Attempt.idempotency_key == idempotency_key
@@ -283,6 +348,19 @@ class QueueService:
                 return existing
         now = utcnow()
         if operation == Operation.OPTIMIZATION:
+            if interview_id:
+                from app.service.interviews import InterviewService
+
+                InterviewService(self.settings, self.storage).generation_sources(
+                    session, user_id, resume_id, interview_id
+                )
+                if session.scalar(
+                    select(Attempt.id).where(
+                        Attempt.sessao_complementacao_id == interview_id,
+                        Attempt.tipo_operacao == Operation.OPTIMIZATION,
+                    )
+                ):
+                    raise AppError("sessao_ja_utilizada", "Esta sessão já possui uma geração.", 409)
             usage = self.usage(session, user_id, now)
             if not usage.restante:
                 raise AppError(
@@ -306,7 +384,7 @@ class QueueService:
                     .select_from(Attempt)
                     .where(
                         Attempt.usuario_id == user_id,
-                        Attempt.tipo_operacao != Operation.OPTIMIZATION,
+                        Attempt.tipo_operacao.in_((Operation.PREVIEW, Operation.EXPORT)),
                         Attempt.status.in_(ACTIVE_STATUSES),
                     )
                 )
@@ -318,7 +396,7 @@ class QueueService:
                     .select_from(Attempt)
                     .where(
                         Attempt.usuario_id == user_id,
-                        Attempt.tipo_operacao != Operation.OPTIMIZATION,
+                        Attempt.tipo_operacao.in_((Operation.PREVIEW, Operation.EXPORT)),
                         Attempt.created_at >= now - timedelta(minutes=1),
                     )
                 )
@@ -339,6 +417,7 @@ class QueueService:
             usuario_id=user_id,
             curriculo_id=resume_id,
             tipo_operacao=operation,
+            sessao_complementacao_id=interview_id,
             idempotency_key=idempotency_key,
             request_hash=fingerprint,
             entrada_temporaria_key=key,

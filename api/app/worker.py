@@ -6,6 +6,7 @@ from types import FrameType
 from app.config import get_settings
 from app.infrastructure.compiler import DockerCompiler
 from app.infrastructure.database import Database
+from app.infrastructure.openai_interviewer import OpenAIInterviewAnalyzer
 from app.infrastructure.openai_optimizer import OpenAIOptimizer
 from app.infrastructure.storage import LocalStorage
 from app.service.worker import Worker
@@ -21,6 +22,7 @@ def main() -> None:
         LocalStorage(settings.storage_root),
         OpenAIOptimizer(settings),
         DockerCompiler(settings),
+        analyzer=OpenAIInterviewAnalyzer(settings),
     )
     stop = Event()
 

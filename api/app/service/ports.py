@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.presentation.interviews import InterviewAnalysis
 from app.presentation.schemas import Proposal
 
 
@@ -24,7 +25,26 @@ class ModelResult:
 
 
 class Optimizer(Protocol):
-    def optimize(self, text: str, job: str) -> ModelResult: ...
+    def optimize(
+        self,
+        text: str,
+        job: str,
+        *,
+        sources: dict[str, str] | None = None,
+        feedback: str | None = None,
+    ) -> ModelResult: ...
+
+
+@dataclass(frozen=True)
+class AnalysisResult:
+    analysis: InterviewAnalysis
+    model: str
+    input_tokens: int
+    output_tokens: int
+
+
+class InterviewAnalyzer(Protocol):
+    def analyze(self, context: dict[str, object]) -> AnalysisResult: ...
 
 
 class Compiler(Protocol):

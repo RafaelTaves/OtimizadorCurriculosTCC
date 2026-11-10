@@ -10,6 +10,7 @@ from app.config import Settings
 from app.infrastructure.database import Database
 from app.infrastructure.models import User
 from app.service.auth import AuthService
+from app.service.interviews import InterviewService
 from app.service.ports import Storage
 from app.service.resumes import QueueService, ResumeService
 
@@ -22,6 +23,7 @@ class Services:
     auth: AuthService
     resumes: ResumeService
     queue: QueueService
+    interviews: InterviewService
 
 
 def services(request: Request) -> Services:

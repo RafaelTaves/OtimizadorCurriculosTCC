@@ -1,0 +1,132 @@
+\documentclass[a4paper,10pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+
+\usepackage{geometry}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{tabularx}
+
+\usepackage{hyperref}
+\usepackage{bookmark}
+\usepackage{xurl}
+
+\geometry{top=1.5cm, bottom=1.5cm, left=1.5cm, right=1.5cm}
+\setcounter{secnumdepth}{0}
+\setlist[itemize]{
+    leftmargin=0.75em,
+    itemsep=0.2em,
+    topsep=0.25em,
+    parsep=0em,
+    partopsep=0em
+}
+\pagestyle{empty}
+
+\hypersetup{
+    pdftitle={Currículo},
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=black,
+    citecolor=black,
+    bookmarksdepth=2
+}
+
+\titleformat{\section}
+{\Large\bfseries}
+{}
+{0em}
+{}
+[\titlerule\vspace{0.5ex}]
+\titleformat{\subsection}
+{\normalsize\bfseries}
+{}
+{0em}
+{}
+\titlespacing*{\subsection}{0pt}{0.35em}{0.15em}
+
+\newcounter{cventry}
+\newcommand{\cventry}[4]{%
+    \refstepcounter{cventry}%
+    \phantomsection%
+    \pdfbookmark[2]{#1}{cventry-\thecventry}%
+    \noindent\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X >{\raggedleft\arraybackslash}X@{}}
+    \textbf{#1} & #2 \\
+    \textit{#3} & \textit{#4} \\
+    \end{tabularx}
+}
+
+\begin{document}
+
+\begin{center}
+    {\LARGE \textbf{Lucas Ferreira Martins}} \\
+    {\large Desenvolvedor de Software Júnior} \\
+    São Paulo, SP
+    {\textbullet}
+    (11) 99999-1234
+    {\textbullet}
+    \href{mailto:lucas.martins@email.com}{lucas.martins@email.com} \\
+    \url{linkedin.com/in/lucasferreiramartins}
+    {\textbullet}
+    \url{github.com/lucasferreira-dev}
+\end{center}
+
+\section*{Resumo}
+Profissional de tecnologia com experiência no desenvolvimento de aplicações web e conhecimentos em JavaScript, React, Node.js e bancos de dados.
+
+\section{Experiência}
+\cventry{TechSolutions}{}{Desenvolvedor Web Júnior}{Março de 2024 – Atual}
+\begin{itemize}
+    \item Desenvolvimento e manutenção de páginas e funcionalidades de sistemas web.
+    \item Criação de componentes utilizando React e JavaScript.
+    \item Implementação de funcionalidades no servidor usando Node.js.
+    \item Realização de consultas em bancos de dados.
+    \item Correção de bugs e melhorias em aplicações existentes.
+    \item Participação em reuniões de equipe e organização de tarefas.
+\end{itemize}
+
+\cventry{DigitalWeb}{}{Estagiário de Desenvolvimento}{Janeiro de 2023 – Fevereiro de 2024}
+\begin{itemize}
+    \item Auxílio no desenvolvimento de sites e sistemas internos.
+    \item Utilização de HTML, CSS e JavaScript.
+    \item Suporte na identificação e correção de problemas.
+    \item Participação em testes de funcionalidades.
+    \item Utilização do Git para controle de versões.
+\end{itemize}
+
+\section{Projetos}
+\cventry{Sistema de Gerenciamento de Tarefas}{}{}{}
+\begin{itemize}
+    \item Desenvolvimento de aplicação para cadastro e gerenciamento de tarefas com React no frontend, Node.js no backend e PostgreSQL para armazenamento dos dados.
+\end{itemize}
+
+\cventry{Sistema de Cadastro de Clientes}{}{}{}
+\begin{itemize}
+    \item Criação de sistema web com funcionalidades de cadastro, edição, listagem e exclusão de clientes, utilizando JavaScript, Express e MySQL.
+\end{itemize}
+
+\section{Habilidades}
+\begin{itemize}
+    \item JavaScript
+    \item TypeScript
+    \item React
+    \item Node.js
+    \item HTML e CSS
+    \item PostgreSQL
+    \item MySQL
+    \item Git e GitHub
+    \item APIs REST
+    \item Noções de Docker
+    \item Metodologias ágeis
+    \item Português: Nativo
+    \item Inglês: Intermediário
+\end{itemize}
+
+\section{Educação}
+\cventry{Universidade Paulista (UNIP)}{}{Bacharelado em Sistemas de Informação}{2022 – 2026}
+
+\end{document}

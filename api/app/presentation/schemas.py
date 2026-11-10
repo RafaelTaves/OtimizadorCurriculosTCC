@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, model_validator
 
 Text = Annotated[str, StringConstraints(min_length=1, max_length=4000)]
 
@@ -38,6 +38,7 @@ class ConfirmText(StrictModel):
 
 class OptimizeInput(StrictModel):
     consentimento_envio_openai: bool
+    sessao_complementacao_id: UUID | None = None
 
 
 class LatexInput(StrictModel):
@@ -49,6 +50,7 @@ class LatexInput(StrictModel):
 class Fact(StrictModel):
     texto: Text
     trecho_fonte: Text
+    fonte: str = "curriculo_original"
 
 
 class Entry(StrictModel):
@@ -69,15 +71,39 @@ class ResumeContent(StrictModel):
 
 class Change(StrictModel):
     secao: Text
-    antes: Text
+    antes: Text | None
     depois: Text
     justificativa: Text
     trecho_fonte: Text
+    fonte: str = "curriculo_original"
+    tipo: Literal["reescrita", "inclusao"] = "reescrita"
+
+    @model_validator(mode="after")
+    def coherent_change(self) -> Self:
+        if (self.tipo == "inclusao") != (self.antes is None):
+            raise ValueError("Inclusões exigem antes nulo; reescritas exigem texto anterior")
+        return self
 
 
 class Keyword(StrictModel):
     termo: Text
-    evidencia_no_original: Text
+    evidencia_no_original: Text | None = None
+    trecho_fonte: Text | None = None
+    fonte: str = "curriculo_original"
+
+    @model_validator(mode="after")
+    def evidence(self) -> Self:
+        if not self.trecho_fonte and not self.evidencia_no_original:
+            raise ValueError("Informe uma evidência literal")
+        if self.fonte != "curriculo_original" and self.evidencia_no_original:
+            raise ValueError("Use trecho_fonte para evidência em complementos")
+        if (
+            self.trecho_fonte
+            and self.evidencia_no_original
+            and self.trecho_fonte != self.evidencia_no_original
+        ):
+            raise ValueError("Evidências divergentes")
+        return self
 
 
 class Gap(StrictModel):
@@ -85,12 +111,30 @@ class Gap(StrictModel):
     motivo_para_nao_incluir: Text
 
 
-class Proposal(StrictModel):
+class GeneratedContent(StrictModel):
+    """Structured portion of the public proposal, independent of its LaTeX."""
+
     curriculo: ResumeContent
-    latex_gerado: str = Field(min_length=50, max_length=200_000)
     alteracoes: list[Change] = Field(max_length=80)
     palavras_chave_usadas: list[Keyword] = Field(max_length=80)
     lacunas: list[Gap] = Field(max_length=80)
+
+
+class GeneratedProposal(GeneratedContent):
+    latex_gerado: str = Field(min_length=50, max_length=200_000)
+
+
+class SourceRecord(StrictModel):
+    id: UUID
+    texto: str = Field(min_length=1, max_length=12000)
+    resposta_origem_id: UUID | None = None
+    substitui_trecho_original: str | None = Field(default=None, min_length=1, max_length=4000)
+
+
+class Proposal(GeneratedProposal):
+    versao_schema: Literal[1, 2] = 1
+    fontes_confirmadas: list[SourceRecord] = Field(default_factory=list)
+    sessao_complementacao_id: UUID | None = None
 
 
 class ResumeView(BaseModel):
@@ -112,6 +156,8 @@ class ResumeView(BaseModel):
     pdf_disponivel: bool = False
     download_pdf: str | None = None
     avisos: list[str] = Field(default_factory=list)
+    tentativa_origem_id: UUID | None = None
+    revisao_humana_confirmada: bool = False
 
 
 class ResumePage(BaseModel):
@@ -140,6 +186,25 @@ class AttemptView(BaseModel):
     acompanhamento: str
     proposta: Proposal | None = None
     download_pdf: str | None = None
+
+
+class AttemptSummary(BaseModel):
+    id: UUID
+    curriculo_id: UUID
+    curriculo_gerado_id: UUID | None
+    sessao_complementacao_id: UUID | None
+    status: str
+    etapa: str
+    codigo_erro: str | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class AttemptPage(BaseModel):
+    itens: list[AttemptSummary]
+    total: int
+    pagina: int
+    tamanho: int
 
 
 class UsageView(BaseModel):

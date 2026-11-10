@@ -57,7 +57,7 @@ def proposal() -> Proposal:
 class FakeOptimizer:
     calls = 0
 
-    def optimize(self, text: str, job: str) -> ModelResult:
+    def optimize(self, text: str, job: str, *, feedback: str | None = None) -> ModelResult:
         self.calls += 1
         return ModelResult(proposal(), "fake-model", 100, 200)
 

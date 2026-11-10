@@ -56,3 +56,15 @@ Desktop.ini
 # Artefatos locais de direção visual e inspeção da Taste Skill
 .taste-skill/
 .agents
+
+# Front-end
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+playwright-report/
+test-results/
+
+/Documentação
+
+/MDs

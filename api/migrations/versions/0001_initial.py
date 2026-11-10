@@ -116,7 +116,33 @@ def upgrade() -> None:
     op.create_index(
         "ix_tentativas_fila", "tentativas_geracao", ["status", "available_at"], unique=False
     )
-    # ### end Alembic commands ###
+    if op.get_bind().dialect.name == "postgresql":
+        # The backend connects as the table owner. Browser roles must not bypass
+        # its authentication/ownership checks through Supabase's public Data API.
+        for table in ("usuarios", "curriculos", "tentativas_geracao", "alembic_version"):
+            op.execute(sa.text(f'ALTER TABLE "{table}" ENABLE ROW LEVEL SECURITY'))
+        op.execute(
+            sa.text(
+                "REVOKE ALL PRIVILEGES ON TABLE usuarios, curriculos, "
+                "tentativas_geracao, alembic_version FROM PUBLIC"
+            )
+        )
+        op.execute(
+            sa.text("""
+            DO $migration$
+            DECLARE client_role name;
+            BEGIN
+                FOR client_role IN
+                    SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated')
+                LOOP
+                    EXECUTE format(
+                        'REVOKE ALL PRIVILEGES ON TABLE usuarios, curriculos, '
+                        'tentativas_geracao, alembic_version FROM %I', client_role
+                    );
+                END LOOP;
+            END $migration$;
+        """)
+        )
 
 
 def downgrade() -> None:

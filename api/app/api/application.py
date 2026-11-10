@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.api.dependencies import Services
+from app.api.interviews import router as interview_router
 from app.api.routes import router
 from app.config import Settings, get_settings
 from app.infrastructure.database import Database
@@ -15,6 +16,7 @@ from app.infrastructure.extraction import ProcessExtractor
 from app.infrastructure.storage import LocalStorage
 from app.service.auth import AuthService
 from app.service.errors import AppError
+from app.service.interviews import InterviewService
 from app.service.ports import Extractor, Storage
 from app.service.resumes import QueueService, ResumeService
 
@@ -81,7 +83,8 @@ def create_app(
         version="0.1.0",
         description="API do TCC. Revise o texto extraído e confirme o envio à OpenAI antes de "
         "otimizar. A geração requer revisão humana e não garante aprovação em ATS. "
-        "Dados salvos são mantidos até exclusão; prévias expiram em uma hora.",
+        "Dados salvos são mantidos até exclusão; prévias expiram em uma hora e entrevistas "
+        "não confirmadas em 24 horas. A entrevista opcional exige consentimento prévio.",
     )
     app.state.services = Services(
         config,
@@ -90,6 +93,7 @@ def create_app(
         AuthService(config),
         ResumeService(config, objects, extractor or ProcessExtractor(config)),
         QueueService(config, objects),
+        InterviewService(config, objects),
     )
     app.add_middleware(RequestLimitMiddleware, limit=config.max_upload_bytes + 100_000)
 
@@ -140,4 +144,5 @@ def create_app(
         return {"status": "ok"}
 
     app.include_router(router)
+    app.include_router(interview_router)
     return app

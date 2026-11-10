@@ -1,0 +1,3572 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Otimização de Currículos",
+    "description": "API do TCC. Revise o texto extraído e confirme o envio à OpenAI antes de otimizar. A geração requer revisão humana e não garante aprovação em ATS. Dados salvos são mantidos até exclusão; prévias expiram em uma hora e entrevistas não confirmadas em 24 horas. A entrevista opcional exige consentimento prévio.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Operação"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Register",
+        "operationId": "register_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Registration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/token": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Token",
+        "operationId": "token_v1_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_token_v1_auth_token_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Me",
+        "operationId": "me_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/curriculos": {
+      "post": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "Upload",
+        "operationId": "upload_v1_curriculos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_v1_curriculos_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "History",
+        "operationId": "history_v1_curriculos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Pagina"
+            }
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Tamanho"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/curriculos/{resume_id}/texto-extraido": {
+      "patch": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "Confirm Text",
+        "operationId": "confirm_text_v1_curriculos__resume_id__texto_extraido_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmText"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/curriculos/{resume_id}": {
+      "get": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "Get Resume",
+        "operationId": "get_resume_v1_curriculos__resume_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "Delete Resume",
+        "operationId": "delete_resume_v1_curriculos__resume_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/otimizacoes": {
+      "get": {
+        "tags": [
+          "Otimização"
+        ],
+        "summary": "Optimization History",
+        "operationId": "optimization_history_v1_otimizacoes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "curriculo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Curriculo Id"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Pagina"
+            }
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Tamanho"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/curriculos/{resume_id}/latex": {
+      "put": {
+        "tags": [
+          "Editor"
+        ],
+        "summary": "Save Latex",
+        "operationId": "save_latex_v1_curriculos__resume_id__latex_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "if-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LatexInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/curriculos/{resume_id}/otimizacoes": {
+      "post": {
+        "tags": [
+          "Otimização"
+        ],
+        "summary": "Optimize",
+        "operationId": "optimize_v1_curriculos__resume_id__otimizacoes_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/otimizacoes/{attempt_id}": {
+      "get": {
+        "tags": [
+          "Otimização"
+        ],
+        "summary": "Optimization",
+        "operationId": "optimization_v1_otimizacoes__attempt_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attempt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attempt Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/otimizacoes/{attempt_id}/confirmacao": {
+      "post": {
+        "tags": [
+          "Otimização"
+        ],
+        "summary": "Review",
+        "operationId": "review_v1_otimizacoes__attempt_id__confirmacao_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attempt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attempt Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/curriculos/{resume_id}/preview": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_v1_curriculos__resume_id__preview_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LatexInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/previews/{attempt_id}": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "summary": "Get Preview",
+        "operationId": "get_preview_v1_previews__attempt_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attempt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attempt Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/previews/{attempt_id}/download": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "summary": "Preview Pdf",
+        "operationId": "preview_pdf_v1_previews__attempt_id__download_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attempt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attempt Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/curriculos/{resume_id}/renderizacoes": {
+      "post": {
+        "tags": [
+          "Editor"
+        ],
+        "summary": "Render",
+        "operationId": "render_v1_curriculos__resume_id__renderizacoes_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/renderizacoes/{attempt_id}": {
+      "get": {
+        "tags": [
+          "Editor"
+        ],
+        "summary": "Rendering",
+        "operationId": "rendering_v1_renderizacoes__attempt_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attempt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attempt Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/curriculos/{resume_id}/download": {
+      "get": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "Download",
+        "operationId": "download_v1_curriculos__resume_id__download_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pdf",
+                "tex"
+              ],
+              "type": "string",
+              "default": "pdf",
+              "title": "Formato"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/uso": {
+      "get": {
+        "tags": [
+          "Uso"
+        ],
+        "summary": "Usage",
+        "operationId": "usage_v1_uso_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/curriculos/{resume_id}/complementacoes": {
+      "post": {
+        "tags": [
+          "Complementação"
+        ],
+        "summary": "Start",
+        "operationId": "start_v1_curriculos__resume_id__complementacoes_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartInterview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Complementação"
+        ],
+        "summary": "History",
+        "operationId": "history_v1_curriculos__resume_id__complementacoes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Pagina"
+            }
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Tamanho"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/complementacoes/{interview_id}": {
+      "get": {
+        "tags": [
+          "Complementação"
+        ],
+        "summary": "Get",
+        "operationId": "get_v1_complementacoes__interview_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "interview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Interview Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/complementacoes/{interview_id}/respostas": {
+      "post": {
+        "tags": [
+          "Complementação"
+        ],
+        "summary": "Answers",
+        "operationId": "answers_v1_complementacoes__interview_id__respostas_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "interview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Interview Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitAnswers"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewView"
+                }
+              }
+            }
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewView"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/complementacoes/{interview_id}/complementos": {
+      "put": {
+        "tags": [
+          "Complementação"
+        ],
+        "summary": "Revise",
+        "operationId": "revise_v1_complementacoes__interview_id__complementos_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "interview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Interview Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviseComplements"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/complementacoes/{interview_id}/confirmacao": {
+      "post": {
+        "tags": [
+          "Complementação"
+        ],
+        "summary": "Confirm",
+        "operationId": "confirm_v1_complementacoes__interview_id__confirmacao_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "interview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Interview Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmComplements"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/complementacoes/{interview_id}/cancelamento": {
+      "post": {
+        "tags": [
+          "Complementação"
+        ],
+        "summary": "Cancel",
+        "operationId": "cancel_v1_complementacoes__interview_id__cancelamento_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "interview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Interview Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/complementacoes/{interview_id}/retentativas": {
+      "post": {
+        "tags": [
+          "Complementação"
+        ],
+        "summary": "Retry",
+        "operationId": "retry_v1_complementacoes__interview_id__retentativas_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "interview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Interview Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Answer": {
+        "properties": {
+          "pergunta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Pergunta Id"
+          },
+          "texto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto"
+          },
+          "pulada": {
+            "type": "boolean",
+            "title": "Pulada",
+            "default": false
+          },
+          "negativa": {
+            "type": "boolean",
+            "title": "Negativa",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pergunta_id"
+        ],
+        "title": "Answer"
+      },
+      "AttemptPage": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptSummary"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "AttemptPage"
+      },
+      "AttemptSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "curriculo_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Curriculo Id"
+          },
+          "curriculo_gerado_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculo Gerado Id"
+          },
+          "sessao_complementacao_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sessao Complementacao Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "etapa": {
+            "type": "string",
+            "title": "Etapa"
+          },
+          "codigo_erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo Erro"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "curriculo_id",
+          "curriculo_gerado_id",
+          "sessao_complementacao_id",
+          "status",
+          "etapa",
+          "codigo_erro",
+          "created_at",
+          "completed_at"
+        ],
+        "title": "AttemptSummary"
+      },
+      "AttemptView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "curriculo_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculo Id"
+          },
+          "curriculo_gerado_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculo Gerado Id"
+          },
+          "tipo_operacao": {
+            "type": "string",
+            "title": "Tipo Operacao"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "etapa": {
+            "type": "string",
+            "title": "Etapa"
+          },
+          "codigo_erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo Erro"
+          },
+          "mensagem_erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensagem Erro"
+          },
+          "modelo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modelo"
+          },
+          "tokens_entrada": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens Entrada"
+          },
+          "tokens_saida": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens Saida"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "acompanhamento": {
+            "type": "string",
+            "title": "Acompanhamento"
+          },
+          "proposta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Proposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "download_pdf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Pdf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "curriculo_id",
+          "curriculo_gerado_id",
+          "tipo_operacao",
+          "status",
+          "etapa",
+          "codigo_erro",
+          "mensagem_erro",
+          "modelo",
+          "tokens_entrada",
+          "tokens_saida",
+          "created_at",
+          "completed_at",
+          "expires_at",
+          "acompanhamento"
+        ],
+        "title": "AttemptView"
+      },
+      "Body_token_v1_auth_token_post": {
+        "properties": {
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^password$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "password",
+            "title": "Client Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_token_v1_auth_token_post"
+      },
+      "Body_upload_v1_curriculos_post": {
+        "properties": {
+          "arquivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Arquivo"
+          },
+          "descricao_vaga": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 30,
+            "title": "Descricao Vaga"
+          }
+        },
+        "type": "object",
+        "required": [
+          "arquivo",
+          "descricao_vaga"
+        ],
+        "title": "Body_upload_v1_curriculos_post"
+      },
+      "Change": {
+        "properties": {
+          "secao": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Secao"
+          },
+          "antes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Antes"
+          },
+          "depois": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Depois"
+          },
+          "justificativa": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Justificativa"
+          },
+          "trecho_fonte": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Trecho Fonte"
+          },
+          "fonte": {
+            "type": "string",
+            "title": "Fonte",
+            "default": "curriculo_original"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "reescrita",
+              "inclusao"
+            ],
+            "title": "Tipo",
+            "default": "reescrita"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "secao",
+          "antes",
+          "depois",
+          "justificativa",
+          "trecho_fonte"
+        ],
+        "title": "Change"
+      },
+      "Complement": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "texto": {
+            "type": "string",
+            "maxLength": 12000,
+            "minLength": 1,
+            "title": "Texto"
+          },
+          "resposta_origem_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resposta Origem Id"
+          },
+          "substitui_trecho_original": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Substitui Trecho Original"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "texto"
+        ],
+        "title": "Complement"
+      },
+      "ConfirmComplements": {
+        "properties": {
+          "confirmacao_informacoes": {
+            "type": "boolean",
+            "title": "Confirmacao Informacoes"
+          },
+          "revisao_conflitos": {
+            "type": "boolean",
+            "title": "Revisao Conflitos"
+          },
+          "resolucoes": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictResolution"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Resolucoes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "confirmacao_informacoes",
+          "revisao_conflitos"
+        ],
+        "title": "ConfirmComplements"
+      },
+      "ConfirmText": {
+        "properties": {
+          "texto": {
+            "type": "string",
+            "maxLength": 60000,
+            "minLength": 50,
+            "title": "Texto"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "texto"
+        ],
+        "title": "ConfirmText"
+      },
+      "Conflict": {
+        "properties": {
+          "resposta_origem_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Resposta Origem Id"
+          },
+          "trecho_original": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Trecho Original"
+          },
+          "trecho_resposta": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Trecho Resposta"
+          },
+          "descricao": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Descricao"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "resposta_origem_id",
+          "trecho_original",
+          "trecho_resposta",
+          "descricao",
+          "id"
+        ],
+        "title": "Conflict"
+      },
+      "ConflictResolution": {
+        "properties": {
+          "conflito_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conflito Id"
+          },
+          "acao": {
+            "type": "string",
+            "enum": [
+              "manter_original",
+              "usar_complemento"
+            ],
+            "title": "Acao"
+          },
+          "complemento_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complemento Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "conflito_id",
+          "acao"
+        ],
+        "title": "ConflictResolution"
+      },
+      "Entry": {
+        "properties": {
+          "titulo": {
+            "$ref": "#/components/schemas/Fact"
+          },
+          "instituicao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Itens"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "titulo",
+          "instituicao",
+          "periodo",
+          "itens"
+        ],
+        "title": "Entry"
+      },
+      "Fact": {
+        "properties": {
+          "texto": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Texto"
+          },
+          "trecho_fonte": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Trecho Fonte"
+          },
+          "fonte": {
+            "type": "string",
+            "title": "Fonte",
+            "default": "curriculo_original"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "texto",
+          "trecho_fonte"
+        ],
+        "title": "Fact"
+      },
+      "Gap": {
+        "properties": {
+          "termo_da_vaga": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Termo Da Vaga"
+          },
+          "motivo_para_nao_incluir": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Motivo Para Nao Incluir"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "termo_da_vaga",
+          "motivo_para_nao_incluir"
+        ],
+        "title": "Gap"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InterviewPage": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewSummary"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "InterviewPage"
+      },
+      "InterviewStatus": {
+        "type": "string",
+        "enum": [
+          "analisando",
+          "aguardando_respostas",
+          "aguardando_confirmacao",
+          "confirmada",
+          "falhou",
+          "cancelada",
+          "expirada"
+        ],
+        "title": "InterviewStatus"
+      },
+      "InterviewSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "curriculo_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculo Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InterviewStatus"
+          },
+          "revisao": {
+            "type": "integer",
+            "title": "Revisao"
+          },
+          "rodada_atual": {
+            "type": "integer",
+            "title": "Rodada Atual"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "curriculo_id",
+          "status",
+          "revisao",
+          "rodada_atual",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "InterviewSummary"
+      },
+      "InterviewView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "curriculo_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculo Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InterviewStatus"
+          },
+          "revisao": {
+            "type": "integer",
+            "title": "Revisao"
+          },
+          "rodada_atual": {
+            "type": "integer",
+            "title": "Rodada Atual"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "rodadas": {
+            "items": {
+              "$ref": "#/components/schemas/RoundView"
+            },
+            "type": "array",
+            "title": "Rodadas"
+          },
+          "complementos": {
+            "items": {
+              "$ref": "#/components/schemas/Complement"
+            },
+            "type": "array",
+            "title": "Complementos"
+          },
+          "conflitos": {
+            "items": {
+              "$ref": "#/components/schemas/Conflict"
+            },
+            "type": "array",
+            "title": "Conflitos"
+          },
+          "resolucoes": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictResolution"
+            },
+            "type": "array",
+            "title": "Resolucoes"
+          },
+          "consentimento_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Consentimento Em"
+          },
+          "consentimento_versao": {
+            "type": "string",
+            "title": "Consentimento Versao"
+          },
+          "confirmado_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmado Em"
+          },
+          "tentativa_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tentativa Id"
+          },
+          "geracao_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geracao Id"
+          },
+          "codigo_erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo Erro"
+          },
+          "mensagem_erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensagem Erro"
+          },
+          "acompanhamento": {
+            "type": "string",
+            "title": "Acompanhamento"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "curriculo_id",
+          "status",
+          "revisao",
+          "rodada_atual",
+          "created_at",
+          "expires_at",
+          "rodadas",
+          "complementos",
+          "conflitos",
+          "resolucoes",
+          "consentimento_em",
+          "consentimento_versao",
+          "confirmado_em",
+          "tentativa_id",
+          "geracao_id",
+          "codigo_erro",
+          "mensagem_erro",
+          "acompanhamento"
+        ],
+        "title": "InterviewView"
+      },
+      "Keyword": {
+        "properties": {
+          "termo": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Termo"
+          },
+          "evidencia_no_original": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidencia No Original"
+          },
+          "trecho_fonte": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trecho Fonte"
+          },
+          "fonte": {
+            "type": "string",
+            "title": "Fonte",
+            "default": "curriculo_original"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "termo"
+        ],
+        "title": "Keyword"
+      },
+      "LatexInput": {
+        "properties": {
+          "latex": {
+            "type": "string",
+            "maxLength": 200000,
+            "minLength": 1,
+            "title": "Latex"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "latex"
+        ],
+        "title": "LatexInput"
+      },
+      "OptimizeInput": {
+        "properties": {
+          "consentimento_envio_openai": {
+            "type": "boolean",
+            "title": "Consentimento Envio Openai"
+          },
+          "sessao_complementacao_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sessao Complementacao Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "consentimento_envio_openai"
+        ],
+        "title": "OptimizeInput"
+      },
+      "Proposal": {
+        "properties": {
+          "curriculo": {
+            "$ref": "#/components/schemas/ResumeContent"
+          },
+          "latex_gerado": {
+            "type": "string",
+            "maxLength": 200000,
+            "minLength": 50,
+            "title": "Latex Gerado"
+          },
+          "alteracoes": {
+            "items": {
+              "$ref": "#/components/schemas/Change"
+            },
+            "type": "array",
+            "maxItems": 80,
+            "title": "Alteracoes"
+          },
+          "palavras_chave_usadas": {
+            "items": {
+              "$ref": "#/components/schemas/Keyword"
+            },
+            "type": "array",
+            "maxItems": 80,
+            "title": "Palavras Chave Usadas"
+          },
+          "lacunas": {
+            "items": {
+              "$ref": "#/components/schemas/Gap"
+            },
+            "type": "array",
+            "maxItems": 80,
+            "title": "Lacunas"
+          },
+          "versao_schema": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Versao Schema",
+            "default": 1
+          },
+          "fontes_confirmadas": {
+            "items": {
+              "$ref": "#/components/schemas/SourceRecord"
+            },
+            "type": "array",
+            "title": "Fontes Confirmadas"
+          },
+          "sessao_complementacao_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sessao Complementacao Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "curriculo",
+          "latex_gerado",
+          "alteracoes",
+          "palavras_chave_usadas",
+          "lacunas"
+        ],
+        "title": "Proposal"
+      },
+      "Question": {
+        "properties": {
+          "pergunta": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Pergunta"
+          },
+          "justificativa": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Justificativa"
+          },
+          "categoria": {
+            "type": "string",
+            "enum": [
+              "projeto",
+              "experiencia",
+              "formacao",
+              "competencia",
+              "outro"
+            ],
+            "title": "Categoria"
+          },
+          "termo_da_vaga": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Termo Da Vaga"
+          },
+          "resposta_origem_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resposta Origem Id"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pergunta",
+          "justificativa",
+          "categoria",
+          "id"
+        ],
+        "title": "Question"
+      },
+      "RecordedAnswer": {
+        "properties": {
+          "pergunta_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Pergunta Id"
+          },
+          "texto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto"
+          },
+          "pulada": {
+            "type": "boolean",
+            "title": "Pulada",
+            "default": false
+          },
+          "negativa": {
+            "type": "boolean",
+            "title": "Negativa",
+            "default": false
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pergunta_id",
+          "id"
+        ],
+        "title": "RecordedAnswer"
+      },
+      "Registration": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "pattern": "^[a-zA-Z0-9_.-]+$",
+            "title": "Username"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 10,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "email",
+          "password"
+        ],
+        "title": "Registration"
+      },
+      "ResumeContent": {
+        "properties": {
+          "contato": {
+            "items": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Contato"
+          },
+          "resumo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Fact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "formacao": {
+            "items": {
+              "$ref": "#/components/schemas/Entry"
+            },
+            "type": "array",
+            "maxItems": 15,
+            "title": "Formacao"
+          },
+          "experiencias": {
+            "items": {
+              "$ref": "#/components/schemas/Entry"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Experiencias"
+          },
+          "projetos": {
+            "items": {
+              "$ref": "#/components/schemas/Entry"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Projetos"
+          },
+          "competencias": {
+            "items": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Competencias"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contato",
+          "resumo",
+          "formacao",
+          "experiencias",
+          "projetos",
+          "competencias"
+        ],
+        "title": "ResumeContent"
+      },
+      "ResumePage": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ResumeView"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "ResumePage"
+      },
+      "ResumeView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "curriculo_origem_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculo Origem Id"
+          },
+          "nome_arquivo": {
+            "type": "string",
+            "title": "Nome Arquivo"
+          },
+          "descricao_vaga": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao Vaga"
+          },
+          "texto_extraido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto Extraido"
+          },
+          "texto_confirmado": {
+            "type": "boolean",
+            "title": "Texto Confirmado"
+          },
+          "latex_gerado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latex Gerado"
+          },
+          "latex_revisao": {
+            "type": "integer",
+            "title": "Latex Revisao"
+          },
+          "pdf_revisao": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Revisao"
+          },
+          "template_versao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Versao"
+          },
+          "conteudo_estruturado": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conteudo Estruturado"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "pdf_disponivel": {
+            "type": "boolean",
+            "title": "Pdf Disponivel",
+            "default": false
+          },
+          "download_pdf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Pdf"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "tentativa_origem_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tentativa Origem Id"
+          },
+          "revisao_humana_confirmada": {
+            "type": "boolean",
+            "title": "Revisao Humana Confirmada",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tipo",
+          "curriculo_origem_id",
+          "nome_arquivo",
+          "descricao_vaga",
+          "texto_extraido",
+          "texto_confirmado",
+          "latex_gerado",
+          "latex_revisao",
+          "pdf_revisao",
+          "template_versao",
+          "conteudo_estruturado",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ResumeView"
+      },
+      "ReviseComplements": {
+        "properties": {
+          "complementos": {
+            "items": {
+              "$ref": "#/components/schemas/Complement"
+            },
+            "type": "array",
+            "maxItems": 24,
+            "title": "Complementos"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "complementos"
+        ],
+        "title": "ReviseComplements"
+      },
+      "RoundView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "numero": {
+            "type": "integer",
+            "title": "Numero"
+          },
+          "perguntas": {
+            "items": {
+              "$ref": "#/components/schemas/Question"
+            },
+            "type": "array",
+            "title": "Perguntas"
+          },
+          "respostas": {
+            "items": {
+              "$ref": "#/components/schemas/RecordedAnswer"
+            },
+            "type": "array",
+            "title": "Respostas"
+          },
+          "complemento_livre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complemento Livre"
+          },
+          "complemento_livre_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complemento Livre Id"
+          },
+          "acao_apos_respostas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acao Apos Respostas"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "numero",
+          "perguntas",
+          "respostas",
+          "complemento_livre",
+          "complemento_livre_id",
+          "acao_apos_respostas",
+          "created_at"
+        ],
+        "title": "RoundView"
+      },
+      "SourceRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "texto": {
+            "type": "string",
+            "maxLength": 12000,
+            "minLength": 1,
+            "title": "Texto"
+          },
+          "resposta_origem_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resposta Origem Id"
+          },
+          "substitui_trecho_original": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Substitui Trecho Original"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "texto"
+        ],
+        "title": "SourceRecord"
+      },
+      "StartInterview": {
+        "properties": {
+          "consentimento_envio_openai": {
+            "type": "boolean",
+            "title": "Consentimento Envio Openai"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "consentimento_envio_openai"
+        ],
+        "title": "StartInterview"
+      },
+      "SubmitAnswers": {
+        "properties": {
+          "rodada": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 1.0,
+            "title": "Rodada"
+          },
+          "respostas": {
+            "items": {
+              "$ref": "#/components/schemas/Answer"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Respostas"
+          },
+          "complemento_livre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complemento Livre"
+          },
+          "acao": {
+            "type": "string",
+            "enum": [
+              "aprofundar",
+              "encerrar"
+            ],
+            "title": "Acao"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rodada",
+          "acao"
+        ],
+        "title": "SubmitAnswers"
+      },
+      "TokenView": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in"
+        ],
+        "title": "TokenView"
+      },
+      "UsageView": {
+        "properties": {
+          "limite": {
+            "type": "integer",
+            "title": "Limite"
+          },
+          "usado": {
+            "type": "integer",
+            "title": "Usado"
+          },
+          "restante": {
+            "type": "integer",
+            "title": "Restante"
+          },
+          "inicio_periodo": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Inicio Periodo"
+          },
+          "proximo_reinicio": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Proximo Reinicio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "limite",
+          "usado",
+          "restante",
+          "inicio_periodo",
+          "proximo_reinicio"
+        ],
+        "title": "UsageView"
+      },
+      "UserView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "email"
+        ],
+        "title": "UserView"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/v1/auth/token"
+          }
+        }
+      }
+    }
+  }
+}
