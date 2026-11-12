@@ -1,3 +1,4 @@
+import { WorkflowProgress } from "@/components/layout/workflow-progress";
 import { PageHeading } from "@/components/layout/page-heading";
 import { ResumeEditor } from "@/features/editor/resume-editor";
 import { requireSession } from "@/lib/server/session";
@@ -16,6 +17,7 @@ export default async function EditResume({
         title="Editor do currículo"
         description="Edite o LaTeX, confira uma prévia e exporte a revisão salva."
       />
+      <WorkflowProgress current={3} />
       <ResumeEditor resumeId={id} userId={user.id} />
     </>
   );

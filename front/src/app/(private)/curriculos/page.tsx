@@ -18,8 +18,8 @@ export default async function Resumes({
   return (
     <>
       <PageHeading
-        title="Currículos"
-        description="Originais e versões salvos na sua conta."
+        title="Seus currículos"
+        description="Continue de onde parou ou prepare uma nova versão."
         action={
           <Button asChild>
             <Link href="/curriculos/novo">

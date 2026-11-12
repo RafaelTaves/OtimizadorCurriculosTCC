@@ -17,6 +17,23 @@ npm run dev
 Abra <http://localhost:3000>. A raiz encaminha para o painel ou login.
 Cadastre uma conta em `/cadastro`; não existem credenciais padrão.
 
+### Identidade visual
+
+Fundo `#F3F6FB`, superfícies brancas, ações em `#3159C9` e texto em `#202C46`.
+Manrope é usada em títulos, botões e navegação; Source Sans 3 no conteúdo.
+As fontes são servidas localmente pelos pacotes Fontsource. Etiquetas de revisão
+combinam texto com verde ou âmbar suave. Upload, revisão, otimização e editor
+compartilham o indicador de etapas, sem oferecer atalhos que pulem confirmações.
+O mascote permanece no primeiro acesso e nos estados vazios existentes.
+A raiz ainda redireciona para o painel; não há landing page para aplicar Lora.
+
+Validação desta atualização (12/11/2026): build com TypeScript, ESLint,
+21 testes unitários e 19 testes Playwright aprovados. Os testes de navegador
+usam fixtures sintéticas e incluem acessibilidade, teclado e reflow de 320 a
+1920 px. Inspeção visual adicional da lista em desktop e do upload em desktop
+e celular; fontes carregadas e sem overflow horizontal. Essa validação não
+inclui chamadas reais de IA ou compilação real de LaTeX.
+
 | Variável, somente no servidor | Padrão local            | Uso                              |
 | ----------------------------- | ----------------------- | -------------------------------- |
 | `API_BASE_URL`                | `http://127.0.0.1:8000` | FastAPI existente                |

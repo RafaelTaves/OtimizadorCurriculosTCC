@@ -62,7 +62,19 @@ function ResumeRow({
           <span className="status-label">
             {original ? "Original" : "Versão otimizada"}
           </span>
-          <span>{reviewStatus}</span>
+          <span
+            className={`status-label ${
+              (
+                original
+                  ? resume.texto_confirmado
+                  : resume.revisao_humana_confirmada
+              )
+                ? "status-confirmed"
+                : "status-pending"
+            }`}
+          >
+            {reviewStatus}
+          </span>
         </div>
       </div>
       <time dateTime={resume.created_at}>

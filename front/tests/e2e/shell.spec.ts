@@ -127,7 +127,7 @@ test("reflow e acessibilidade em sete larguras; menu por teclado", async ({
     .getByRole("link", { name: "Currículos", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Currículos", exact: true }),
+    page.getByRole("heading", { name: "Seus currículos", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });

@@ -1,3 +1,4 @@
+import { WorkflowProgress } from "@/components/layout/workflow-progress";
 import { PageHeading } from "@/components/layout/page-heading";
 import { ProposalReview } from "@/features/otimizacao/proposal-review";
 import { requireSession } from "@/lib/server/session";
@@ -16,6 +17,7 @@ export default async function OptimizationAttempt({
         title="Proposta de currículo"
         description="Acompanhe a geração e revise o conteúdo com as evidências disponíveis."
       />
+      <WorkflowProgress current={2} />
       <ProposalReview attemptId={tentativaId} userId={user.id} />
     </>
   );

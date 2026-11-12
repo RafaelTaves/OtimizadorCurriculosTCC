@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
-import "@fontsource/geist/400.css";
-import "@fontsource/geist/500.css";
+import "@fontsource/manrope/latin-600.css";
+import "@fontsource/manrope/latin-700.css";
+import "@fontsource/source-sans-3/latin-400.css";
+import "@fontsource/source-sans-3/latin-500.css";
+import "@fontsource/source-sans-3/latin-600.css";
+import "@fontsource/source-sans-3/latin-700.css";
 import "./globals.css";
 export const metadata: Metadata = {
   title: {
