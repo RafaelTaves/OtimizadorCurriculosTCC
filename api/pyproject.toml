@@ -4,11 +4,21 @@ version = "0.1.0"
 description = "API de otimização de currículos para o TCC"
 requires-python = ">=3.14,<3.15"
 dependencies = [
-  "fastapi>=0.115", "uvicorn>=0.34", "python-multipart>=0.0.20",
-  "pydantic>=2.11", "pydantic-settings>=2.8", "email-validator>=2.2",
-  "sqlalchemy>=2.0", "psycopg[binary]>=3.2", "alembic>=1.15",
-  "openai>=2.0", "pypdf>=6.0", "python-docx>=1.2",
-  "pwdlib[argon2]>=0.2", "PyJWT>=2.10",
+  "fastapi>=0.115",
+  "uvicorn>=0.34",
+  "python-multipart>=0.0.20",
+  "pydantic>=2.11",
+  "pydantic-settings>=2.8",
+  "email-validator>=2.2",
+  "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.2",
+  "alembic>=1.15",
+  "openai>=2.0",
+  "pypdf>=6.0",
+  "python-docx>=1.2",
+  "pwdlib[argon2]>=0.2",
+  "PyJWT>=2.10",
+  "boto3>=1.35,<2",
 ]
 
 [dependency-groups]
@@ -41,5 +51,5 @@ plugins = ["pydantic.mypy"]
 exclude = ["tests/", "migrations/", ".venv/", ".tools/", ".python/"]
 
 [[tool.mypy.overrides]]
-module = ["pwdlib.*"]
+module = ["pwdlib.*", "boto3.*", "botocore.*"]
 ignore_missing_imports = true

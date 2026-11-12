@@ -1,5 +1,7 @@
 # Front-end do otimizador de currículos
 
+Deploy em produção: [passo a passo para Railway](../docs/deploy-railway.md).
+
 Estrutura inicial conforme `../plano-front.md`: Next.js 16 (App Router), React 19,
 TypeScript strict, Tailwind CSS 4 e componentes locais no padrão shadcn/ui com
 Radix. Node.js **24 LTS** e npm; dependências fixadas pelo `package-lock.json`.

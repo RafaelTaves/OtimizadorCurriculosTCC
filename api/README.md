@@ -1,5 +1,8 @@
 # API de otimização de currículos
 
+Para produção no Railway, siga [o guia de deploy](../docs/deploy-railway.md).
+Ele usa bucket S3 privado, workers separados e o Dockerfile de PDF próprio para Railway.
+
 Monólito Python 3.14/FastAPI, organizado nas camadas `app/api` (HTTP e dependências), `app/service` (regras e portas), `app/presentation` (contratos) e `app/infrastructure` (PostgreSQL, extração, OpenAI, arquivos e compilação). `tests` cobre regras, rotas e integrações. Não inclui frontend; os contratos atendem ao editor LaTeX com visualizador de PDF.
 
 As entidades persistidas são `usuarios`, `curriculos`, `tentativas_geracao`, `sessoes_complementacao`, `rodadas_complementacao` e `registros_idempotencia`. A tabela de tentativas implementa a fila, o histórico e a cota; análises de entrevista têm orçamento técnico separado. As migrações são explícitas e versionadas com Alembic. O lockfile `uv.lock` fixa as dependências diretas e transitivas.

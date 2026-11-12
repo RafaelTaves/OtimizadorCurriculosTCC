@@ -5,11 +5,11 @@ from threading import Event
 from types import FrameType
 
 from app.config import get_settings
-from app.infrastructure.compiler import DockerCompiler
+from app.infrastructure.compiler import DockerCompiler, SandboxCompiler
 from app.infrastructure.database import Database
 from app.infrastructure.openai_interviewer import OpenAIInterviewAnalyzer
 from app.infrastructure.openai_optimizer import OpenAIOptimizer
-from app.infrastructure.storage import LocalStorage
+from app.infrastructure.storage import create_storage
 from app.service.worker import Worker
 
 
@@ -23,9 +23,13 @@ def main() -> None:
     worker = Worker(
         settings,
         database,
-        LocalStorage(settings.storage_root),
+        create_storage(settings),
         OpenAIOptimizer(settings),
-        DockerCompiler(settings),
+        (
+            SandboxCompiler(settings)
+            if settings.compiler_backend == "sandbox"
+            else DockerCompiler(settings)
+        ),
         analyzer=OpenAIInterviewAnalyzer(settings),
         lane=args.lane,
         cleanup_interval_seconds=30,

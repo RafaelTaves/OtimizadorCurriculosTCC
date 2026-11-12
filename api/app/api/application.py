@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -13,7 +14,7 @@ from app.api.routes import router
 from app.config import Settings, get_settings
 from app.infrastructure.database import Database
 from app.infrastructure.extraction import ProcessExtractor
-from app.infrastructure.storage import LocalStorage
+from app.infrastructure.storage import create_storage
 from app.service.auth import AuthService
 from app.service.errors import AppError
 from app.service.interviews import InterviewService
@@ -77,7 +78,7 @@ def create_app(
 ) -> FastAPI:
     config = settings or get_settings()
     db = database or Database(config.database_url)
-    objects = storage or LocalStorage(config.storage_root)
+    objects = storage or create_storage(config)
     app = FastAPI(
         title="Otimização de Currículos",
         version="0.1.0",
@@ -141,6 +142,13 @@ def create_app(
 
     @app.get("/health", tags=["Operação"])
     def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/ready", include_in_schema=False)
+    def ready() -> dict[str, str]:
+        with db.engine.connect() as connection:
+            connection.execute(text("SELECT 1 FROM usuarios LIMIT 1"))
+            connection.execute(text("SELECT 1 FROM sessoes_complementacao LIMIT 1"))
         return {"status": "ok"}
 
     app.include_router(router)

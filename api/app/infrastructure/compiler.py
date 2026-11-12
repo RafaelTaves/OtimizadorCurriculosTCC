@@ -1,7 +1,11 @@
 import logging
+import os
 import re
+import shutil
 import subprocess
+import sys
 import tempfile
+from pathlib import Path
 from time import monotonic
 from uuid import uuid4
 
@@ -9,6 +13,76 @@ from app.config import Settings
 from app.service.errors import ProcessingError
 
 logger = logging.getLogger(__name__)
+
+
+class SandboxCompiler:
+    """Railway: per-job chroot, dropped UID, seccomp and resource limits.
+
+    The PDF worker alone runs as root to enter chroot. The TeX process gets
+    neither the worker filesystem nor its credentials. No Docker socket needed.
+    """
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    def compile(self, latex: str) -> bytes:
+        if len(latex.encode("utf-8")) > self.settings.max_latex_bytes:
+            raise ProcessingError("latex_excessivo", "O LaTeX excede o limite.")
+        try:
+            with tempfile.TemporaryDirectory(prefix="tex-job-") as directory:
+                root = Path(directory) / "root"
+                shutil.copytree("/opt/tex-root", root, copy_function=os.link)
+                work = root / "work"
+                work.mkdir(mode=0o700)
+                (work / "main.tex").write_text(latex, encoding="utf-8")
+                os.chown(work, 10002, 10002)
+                with tempfile.TemporaryFile() as log:
+                    result = subprocess.run(
+                        [sys.executable, "/opt/tex-sandbox.py", str(root)],
+                        stdin=subprocess.DEVNULL,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                        env={"PATH": "/usr/local/bin:/usr/bin:/bin"},
+                        timeout=self.settings.compiler_timeout_seconds,
+                        check=False,
+                    )
+                    if result.returncode:
+                        log.seek(0)
+                        diagnostic = log.read(100_000).decode(errors="replace")
+                        if "SANDBOX_UNAVAILABLE" in diagnostic:
+                            raise ProcessingError(
+                                "compilador_indisponivel",
+                                "O isolamento do compilador está indisponível.",
+                                transient=True,
+                            )
+                        match = re.search(r"(?:main\.tex:|l\.)(\d{1,6})", diagnostic)
+                        message = (
+                            "Não foi possível compilar. Confira os comandos e pacotes do LaTeX."
+                        )
+                        if match:
+                            message += f" Verifique a linha {match[1]}."
+                        raise ProcessingError("latex_invalido", message)
+                pdf = work / "main.pdf"
+                if not pdf.is_file() or pdf.is_symlink():
+                    raise ProcessingError(
+                        "pdf_invalido", "O compilador não produziu um PDF válido."
+                    )
+                if pdf.stat().st_size > self.settings.max_pdf_bytes:
+                    raise ProcessingError("pdf_excessivo", "O PDF gerado excede o limite.")
+                data = pdf.read_bytes()
+                if not data.startswith(b"%PDF-"):
+                    raise ProcessingError(
+                        "pdf_invalido", "O compilador não produziu um PDF válido."
+                    )
+                return data
+        except subprocess.TimeoutExpired as exc:
+            raise ProcessingError(
+                "compilacao_timeout", "A compilação excedeu o tempo limite."
+            ) from exc
+        except OSError as exc:
+            raise ProcessingError(
+                "compilador_indisponivel", "O compilador está indisponível.", transient=True
+            ) from exc
 
 
 class DockerCompiler:

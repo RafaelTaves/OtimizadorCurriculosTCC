@@ -8,5 +8,7 @@ __pycache__
 .ruff_cache
 storage
 .env
+.env.*
+!.env.example
 tests
 evaluation

@@ -1,7 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,13 @@ class Settings(BaseSettings):
     openai_model: str = ""
     openai_timeout_seconds: int = Field(default=90, ge=1)
     storage_root: Path = Path("storage")
+    storage_backend: Literal["local", "s3"] = "local"
+    s3_bucket: str = ""
+    s3_endpoint_url: str = ""
+    s3_region: str = "auto"
+    s3_access_key_id: SecretStr | None = None
+    s3_secret_access_key: SecretStr | None = None
+    s3_addressing_style: Literal["virtual", "path"] = "virtual"
     monthly_optimization_limit: int = Field(default=5, ge=1)
     max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
     max_pages: int = Field(default=10, ge=1)
@@ -27,6 +35,7 @@ class Settings(BaseSettings):
     previews_per_minute: int = Field(default=6, ge=1)
     max_active_compilations: int = Field(default=3, ge=1)
     compiler_image: str = "curriculo-tectonic:0.1"
+    compiler_backend: Literal["docker", "sandbox"] = "docker"
     compiler_timeout_seconds: int = Field(default=40, ge=1)
     max_pdf_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
     worker_poll_seconds: float = Field(default=0.5, gt=0)
@@ -42,6 +51,27 @@ class Settings(BaseSettings):
     interview_max_context_chars: int = Field(default=120000, ge=1000)
     interview_max_output_tokens: int = Field(default=3000, ge=256, le=10000)
     interview_consent_version: str = "complementacao-v1"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value[len(prefix) :]
+        return value
+
+    @model_validator(mode="after")
+    def validate_storage(self) -> Settings:
+        if self.storage_backend == "s3" and not all(
+            (
+                self.s3_bucket,
+                self.s3_endpoint_url,
+                self.s3_access_key_id and self.s3_access_key_id.get_secret_value(),
+                self.s3_secret_access_key and self.s3_secret_access_key.get_secret_value(),
+            )
+        ):
+            raise ValueError("Configure S3_BUCKET, S3_ENDPOINT_URL e as duas credenciais S3")
+        return self
 
     @model_validator(mode="after")
     def validate_worker_lease(self) -> Settings:
